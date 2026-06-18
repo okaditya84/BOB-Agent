@@ -23,11 +23,24 @@ def _default_kb_path() -> str:
 _DEFAULT_KB = _default_kb_path()
 
 
+def _default_model(filename: str) -> str:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "data" / "models" / filename
+        if candidate.exists():
+            return str(candidate)
+    return f"data/models/{filename}"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="BOBAI_KYC_", env_file=".env", extra="ignore")
 
     # Path to the BoB document knowledge base (JSON).
     kb_path: str = str(_DEFAULT_KB)
+
+    # Face-match model paths (YuNet detector + SFace recognizer, OpenCV Zoo).
+    yunet_path: str = _default_model("face_detection_yunet_2023mar.onnx")
+    sface_path: str = _default_model("face_recognition_sface_2021dec.onnx")
 
 
 @lru_cache

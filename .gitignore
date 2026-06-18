@@ -34,3 +34,6 @@ data/*.mmdb
 platform/librechat/
 platform/obot/
 platform/librechat-admin-panel/
+
+# Face-match ONNX models (large binaries; download separately)
+data/models/

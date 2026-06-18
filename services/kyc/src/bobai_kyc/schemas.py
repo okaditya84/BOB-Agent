@@ -112,6 +112,15 @@ class FraudVerdict(str, Enum):
     REJECT = "reject"
 
 
+class FaceMatchResult(BaseModel):
+    match: bool
+    cosine: float | None
+    faces_detected: dict[str, bool]
+    threshold: float
+    note: str
+    disclaimer: str
+
+
 class DocumentFraudReport(BaseModel):
     document_type: DocumentType
     ela: ELAResult

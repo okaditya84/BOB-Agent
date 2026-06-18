@@ -19,6 +19,8 @@ services:
     build: ./services/kyc
     environment:
       BOBAI_KYC_KB_PATH: /data/bob_documents_data.json
+      BOBAI_KYC_YUNET_PATH: /data/models/face_detection_yunet_2023mar.onnx
+      BOBAI_KYC_SFACE_PATH: /data/models/face_recognition_sface_2021dec.onnx
     volumes:
       - ./data:/data
     ports:

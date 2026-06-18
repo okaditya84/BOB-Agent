@@ -18,16 +18,33 @@ from .schemas import (
     ClaimedFields,
     DocumentFraudReport,
     DocumentType,
+    FaceMatchResult,
     Product,
     RequirementSet,
 )
 
 
+def _load_face_matcher(settings):
+    """Load the face matcher lazily; return None if models are unavailable."""
+    import os
+
+    if not (os.path.exists(settings.yunet_path) and os.path.exists(settings.sface_path)):
+        return None
+    try:
+        from .face import FaceMatcher
+
+        return FaceMatcher(settings.yunet_path, settings.sface_path)
+    except Exception:
+        return None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    app.state.settings = settings
     app.state.kb = KnowledgeBase.from_file(settings.kb_path)
     app.state.ocr = TesseractEngine()
+    app.state.face = _load_face_matcher(settings)
     yield
 
 
@@ -92,3 +109,29 @@ async def analyze_doc(
     claimed = ClaimedFields(name=name, dob=dob, document_number=document_number)
     engine = app.state.ocr if run_ocr else None
     return analyze_document(image_bytes, document_type, claimed, ocr_engine=engine)
+
+
+@app.post("/v1/kyc/face/match", response_model=FaceMatchResult)
+async def face_match(
+    selfie: UploadFile = File(...),
+    document: UploadFile = File(...),
+) -> FaceMatchResult:
+    matcher = app.state.face
+    if matcher is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Face-match models not available. Place YuNet + SFace ONNX in data/models/.",
+        )
+    selfie_bytes, doc_bytes = await selfie.read(), await document.read()
+    selfie_img = matcher.decode(selfie_bytes)
+    doc_img = matcher.decode(doc_bytes)
+    if selfie_img is None or doc_img is None:
+        raise HTTPException(status_code=400, detail="Could not decode one or both images.")
+    result = matcher.match(selfie_img, doc_img)
+    return FaceMatchResult(
+        match=result["match"], cosine=result["cosine"],
+        faces_detected=result["faces_detected"], threshold=matcher.cosine_threshold,
+        note=result["note"],
+        disclaimer="Adult re-verification only; not bank-grade for child-to-adult age gaps. "
+        "Liveness/anti-spoofing and provenance (DigiLocker/Aadhaar Secure-QR) recommended for production.",
+    )
