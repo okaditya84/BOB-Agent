@@ -53,7 +53,7 @@ def providers() -> list[ProviderStatus]:
         ProviderStatus(
             name=name,
             configured=name in reg.configured,
-            key_count=sum(1 for k in reg.keys if k["provider"] == name),
+            key_count=sum(1 for k in reg.keys if k["provider"] == d["provider"]),
             default_model=d["default_model"],
             custom_endpoint=d["custom"],
         )

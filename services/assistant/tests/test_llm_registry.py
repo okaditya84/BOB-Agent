@@ -22,13 +22,14 @@ def test_multiple_keys_become_rotatable_credentials():
     assert all(k["secret_ref"].startswith("env://LLMROTATE_OPENAI_") for k in openai_keys)
 
 
-def test_custom_openai_compatible_provider_gets_base_url():
-    reg = build_registry({"GROQ_API_KEY": "g1"}, "groq", "llama-3.3-70b-versatile")
-    assert "groq" in reg.providers
-    assert reg.providers["groq"]["base_url"] == "https://api.groq.com/openai/v1"
-    assert reg.providers["groq"]["adapter"] == "openai"
-    # Built-in providers are NOT redefined.
-    reg2 = build_registry({"OPENAI_API_KEY": "k1"}, "openai", "gpt-4o-mini")
+def test_custom_provider_gets_base_url_and_builtins_do_not():
+    # NVIDIA is not a built-in llm-rotate provider -> registered as custom with base_url.
+    reg = build_registry({"NVIDIA_API_KEY": "n1"}, "nvidia", "meta/llama-3.1-70b-instruct")
+    assert "nvidia" in reg.providers
+    assert reg.providers["nvidia"]["base_url"].startswith("https://integrate.api.nvidia.com")
+    assert reg.providers["nvidia"]["adapter"] == "openai"
+    # Built-in providers (openai, openrouter, ...) are NOT redefined as custom.
+    reg2 = build_registry({"OPENAI_API_KEY": "k1", "OPENROUTER_API_KEY": "o1"}, "openai", "gpt-4o-mini")
     assert reg2.providers == {}
 
 
@@ -38,7 +39,12 @@ def test_fallback_chain_built_across_providers():
     )
     assert "gpt-4o-mini" in reg.fallback_chains
     fb_providers = {f["provider"] for f in reg.fallback_chains["gpt-4o-mini"]}
-    assert fb_providers == {"groq"}  # every configured provider except the default
+    assert fb_providers == {"groq"}  # canonical provider name of the non-default provider
+
+
+def test_google_maps_to_canonical_provider_name():
+    reg = build_registry({"GOOGLE_API_KEY": "g1"}, "google", "gemini-2.0-flash")
+    assert reg.keys[0]["provider"] == "google_ai_studio"
 
 
 def test_no_keys_means_empty_registry():

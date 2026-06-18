@@ -7,9 +7,20 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# services/assistant/src/bobai_assistant/config.py -> parents[4] == repo root
-_REPO_ROOT = Path(__file__).resolve().parents[4]
-_DEFAULT_KB = _REPO_ROOT / "data" / "bob_documents_data.json"
+def _default_kb_path() -> str:
+    """Find the BoB KB by searching upward; robust to both local and container layouts.
+
+    In containers the path is supplied via BOBAI_KB_PATH (this is only the default).
+    """
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "data" / "bob_documents_data.json"
+        if candidate.exists():
+            return str(candidate)
+    return "data/bob_documents_data.json"
+
+
+_DEFAULT_KB = _default_kb_path()
 
 
 class Settings(BaseSettings):

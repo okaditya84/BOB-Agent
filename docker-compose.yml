@@ -1,0 +1,37 @@
+# BOBAI backend services. The LibreChat stack runs from platform/librechat/
+# (its own compose) with deploy/librechat/librechat.yaml + platform/librechat/.env.
+version: "3.9"
+
+services:
+  identity-trust:
+    build: ./services/identity-trust
+    env_file: .env
+    environment:
+      IDTRUST_DB_PATH: /data/identity_trust.db
+      GEOIP_MMDB_PATH: /data/GeoLite2-City.mmdb
+    volumes:
+      - ./data:/data
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  kyc:
+    build: ./services/kyc
+    environment:
+      BOBAI_KYC_KB_PATH: /data/bob_documents_data.json
+    volumes:
+      - ./data:/data
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+
+  assistant:
+    build: ./services/assistant
+    env_file: .env
+    environment:
+      BOBAI_KB_PATH: /data/bob_documents_data.json
+    volumes:
+      - ./data:/data
+    ports:
+      - "8003:8003"
+    restart: unless-stopped

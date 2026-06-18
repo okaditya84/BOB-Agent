@@ -11,26 +11,30 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-# Provider definitions. Built-in llm-rotate providers (openai/anthropic/google/
-# openrouter) need only a key; OpenAI-compatible ones (groq/nvidia) are registered
-# as custom providers with their base_url.
+# Provider definitions keyed by a friendly name. `provider` is the actual
+# llm-rotate provider name. Built-in providers (openai, anthropic, google_ai_studio,
+# openrouter, groq) need only a key; providers llm-rotate doesn't ship (nvidia) are
+# registered as custom OpenAI-compatible providers with their base_url.
 PROVIDER_DEFS: dict[str, dict] = {
-    "openai":     {"env": "OPENAI_API_KEY",     "adapter": "openai",    "base_url": None,
-                   "default_model": "gpt-4o-mini", "custom": False},
-    "anthropic":  {"env": "ANTHROPIC_API_KEY",  "adapter": "anthropic", "base_url": None,
-                   "default_model": "claude-3-5-haiku-latest", "custom": False},
-    "google":     {"env": "GOOGLE_API_KEY",     "adapter": "google",    "base_url": None,
-                   "default_model": "gemini-1.5-flash", "custom": False},
-    "openrouter": {"env": "OPENROUTER_API_KEY", "adapter": "openai",
-                   "base_url": "https://openrouter.ai/api/v1",
-                   "default_model": "openai/gpt-4o-mini", "custom": False},
-    "groq":       {"env": "GROQ_API_KEY",       "adapter": "openai",
-                   "base_url": "https://api.groq.com/openai/v1",
-                   "default_model": "llama-3.3-70b-versatile", "custom": True},
-    "nvidia":     {"env": "NVIDIA_API_KEY",     "adapter": "openai",
+    "openai":     {"env": "OPENAI_API_KEY",     "provider": "openai",          "adapter": "openai",
+                   "base_url": None, "default_model": "gpt-4o-mini", "custom": False},
+    "anthropic":  {"env": "ANTHROPIC_API_KEY",  "provider": "anthropic",       "adapter": "anthropic",
+                   "base_url": None, "default_model": "claude-3-5-haiku-latest", "custom": False},
+    "google":     {"env": "GOOGLE_API_KEY",     "provider": "google_ai_studio", "adapter": "google",
+                   "base_url": None, "default_model": "gemini-2.0-flash", "custom": False},
+    "openrouter": {"env": "OPENROUTER_API_KEY", "provider": "openrouter",      "adapter": "openai",
+                   "base_url": None, "default_model": "openai/gpt-4o-mini", "custom": False},
+    "groq":       {"env": "GROQ_API_KEY",       "provider": "groq",            "adapter": "openai",
+                   "base_url": "https://api.groq.com/openai/v1", "default_model": "llama-3.3-70b-versatile",
+                   "custom": True},
+    "nvidia":     {"env": "NVIDIA_API_KEY",     "provider": "nvidia",          "adapter": "openai",
                    "base_url": "https://integrate.api.nvidia.com/v1",
                    "default_model": "meta/llama-3.1-70b-instruct", "custom": True},
 }
+
+# Friendly name -> llm-rotate provider name (and identity for already-canonical names).
+PROVIDER_NAME = {k: d["provider"] for k, d in PROVIDER_DEFS.items()}
+PROVIDER_NAME.update({d["provider"]: d["provider"] for d in PROVIDER_DEFS.values()})
 
 
 @dataclass
@@ -52,10 +56,11 @@ def build_registry(env: dict, default_provider: str, default_model: str) -> Regi
         if not raw:
             continue
         reg.configured.append(name)
+        provider_name = d["provider"]
 
         if d["custom"]:
-            reg.providers[name] = {
-                "name": name, "display_name": name.title(), "provider_type": "direct",
+            reg.providers[provider_name] = {
+                "name": provider_name, "display_name": name.title(), "provider_type": "direct",
                 "adapter": d["adapter"], "base_url": d["base_url"],
             }
 
@@ -72,12 +77,12 @@ def build_registry(env: dict, default_provider: str, default_model: str) -> Regi
                 secret_ref = f"env://{synth}"
             key_id = f"{name}-{i}"
             reg.keys.append(
-                {"key_id": key_id, "provider": name, "secret_ref": secret_ref, "models": models}
+                {"key_id": key_id, "provider": provider_name, "secret_ref": secret_ref, "models": models}
             )
             reg.use_keys.append(key_id)
 
     fallback = [
-        {"provider": p, "model": PROVIDER_DEFS[p]["default_model"]}
+        {"provider": PROVIDER_DEFS[p]["provider"], "model": PROVIDER_DEFS[p]["default_model"]}
         for p in reg.configured
         if p != default_provider
     ]
@@ -117,8 +122,9 @@ async def chat(messages: list[dict], *, model: str, provider: str | None = None,
     """Call the configured LLM and normalise the response to a plain dict."""
     import llm_rotate as L
 
+    resolved_provider = PROVIDER_NAME.get(provider, provider) if provider else None
     resp = await L.lm.chat(
-        model, messages, provider=provider, temperature=temperature, max_tokens=max_tokens
+        model, messages, provider=resolved_provider, temperature=temperature, max_tokens=max_tokens
     )
     return {
         "content": resp.content,
