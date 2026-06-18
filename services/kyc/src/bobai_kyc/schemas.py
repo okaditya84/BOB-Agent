@@ -62,3 +62,65 @@ class CheckResult(BaseModel):
     missing_summary: list[str]
     notes: list[str] = Field(default_factory=list)
     disclaimer: str
+
+
+# --------------------------------------------------------------------------- #
+#  Document onboarding-fraud schemas                                           #
+# --------------------------------------------------------------------------- #
+from enum import Enum  # noqa: E402
+
+
+class DocumentType(str, Enum):
+    AADHAAR = "aadhaar"
+    PAN = "pan"
+    PASSPORT = "passport"
+    VOTER_ID = "voter_id"
+    DRIVING_LICENCE = "driving_licence"
+    OTHER = "other"
+
+
+class ClaimedFields(BaseModel):
+    """What the applicant says is on the document — cross-checked against OCR."""
+
+    name: str | None = None
+    dob: str | None = None
+    document_number: str | None = None
+
+
+class ELAResult(BaseModel):
+    """Error-Level-Analysis triage (best-effort on JPEGs; not forensic proof)."""
+
+    score: float = Field(ge=0, le=1)
+    mean_error: float
+    max_error: float
+    p95_error: float
+    suspicious: bool
+    note: str
+
+
+class FieldCheck(BaseModel):
+    field: str
+    claimed: str | None
+    extracted: str | None
+    match: bool | None  # None = could not compare
+    detail: str
+
+
+class FraudVerdict(str, Enum):
+    PASS = "pass"
+    REVIEW = "review"
+    REJECT = "reject"
+
+
+class DocumentFraudReport(BaseModel):
+    document_type: DocumentType
+    ela: ELAResult
+    extracted_fields: dict[str, str] = Field(default_factory=dict)
+    format_valid: bool | None  # None = not applicable to this doc type
+    format_detail: str
+    field_checks: list[FieldCheck] = Field(default_factory=list)
+    fraud_score: float = Field(ge=0, le=1)
+    verdict: FraudVerdict
+    flags: list[str] = Field(default_factory=list)
+    ocr_used: bool
+    disclaimer: str

@@ -9,10 +9,14 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "python-multipart>=0.0.9",
+    "pillow>=10.4",
+    "numpy>=1.26",
+    "pytesseract>=0.3.13",
 ]
 
 [project.optional-dependencies]
-# Heavy CV/OCR deps for the fraud + eKYC sub-modules are added when those land.
+# Heavy face-match deps (opencv-zoo, mediapipe, onnxruntime) land with the eKYC module.
 dev = [
     "pytest>=8.3",
     "httpx>=0.27",

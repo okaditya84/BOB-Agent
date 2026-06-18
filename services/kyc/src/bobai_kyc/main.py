@@ -4,19 +4,30 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
+from .fraud import analyze_document
 from .kb import KnowledgeBase
 from .matcher import check
-from .schemas import CheckRequest, CheckResult, Product, RequirementSet
+from .ocr import TesseractEngine
+from .schemas import (
+    CheckRequest,
+    CheckResult,
+    ClaimedFields,
+    DocumentFraudReport,
+    DocumentType,
+    Product,
+    RequirementSet,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     app.state.kb = KnowledgeBase.from_file(settings.kb_path)
+    app.state.ocr = TesseractEngine()
     yield
 
 
@@ -64,3 +75,20 @@ def check_documents(body: CheckRequest) -> CheckResult:
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Unknown product '{body.product_id}'.")
     return check(req, body.submitted)
+
+
+@app.post("/v1/kyc/document/analyze", response_model=DocumentFraudReport)
+async def analyze_doc(
+    file: UploadFile = File(...),
+    document_type: DocumentType = Form(DocumentType.OTHER),
+    name: str | None = Form(None),
+    dob: str | None = Form(None),
+    document_number: str | None = Form(None),
+    run_ocr: bool = Form(True),
+) -> DocumentFraudReport:
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Empty file upload.")
+    claimed = ClaimedFields(name=name, dob=dob, document_number=document_number)
+    engine = app.state.ocr if run_ocr else None
+    return analyze_document(image_bytes, document_type, claimed, ocr_engine=engine)
