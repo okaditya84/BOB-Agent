@@ -71,11 +71,14 @@ class RiskModel:
         hst_score = float(self._hst.score_one(d))
         self._hst.learn_one(d)  # online adaptation to drift
 
-        raw = min(1.0, 0.6 * raw_if + 0.4 * hst_score)
+        # The trained IsolationForest is the reliable signal; the streaming model
+        # (River) is noisy until it has seen enough real traffic, so it is weighted
+        # low and only nudges the score rather than dominating it.
+        raw = min(1.0, 0.85 * raw_if + 0.15 * hst_score)
         detail = (
             f"ML anomaly model flagged unusual feature combination "
             f"(isolation-forest {raw_if:.2f}, streaming {hst_score:.2f})."
-            if raw > 0.2
+            if raw > 0.5
             else "ML anomaly model: event consistent with normal behaviour."
         )
         return DetectorResult(raw, detail, {"iforest": round(raw_if, 3), "streaming": round(hst_score, 3)})

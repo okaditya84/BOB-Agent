@@ -22,6 +22,9 @@ ps: ## Show all running containers
 logs: ## Tail backend logs
 	docker-compose logs -f
 
+seed: ## Populate the risk engine with a realistic demo scenario set
+	python3 scripts/seed_demo.py
+
 test: ## Run all service test suites
 	cd services/identity-trust && uv run pytest -q
 	cd services/kyc && uv run pytest -q
