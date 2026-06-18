@@ -25,3 +25,12 @@ node_modules/
 
 # OS
 .DS_Store
+
+# MaxMind GeoLite2 (large binary)
+GeoLite2-City_*/
+data/*.mmdb
+
+# Vendored forks (cloned locally; branding commits go to their own okaditya84 remotes)
+platform/librechat/
+platform/obot/
+platform/librechat-admin-panel/
