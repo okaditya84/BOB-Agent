@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from ..config import Settings
+from ..geoip import GeoIP
 from ..schemas import AuthEvent, RiskAction, RiskDecision, SignalContribution
 from ..store.db import Store, UserProfile
 from . import policy
@@ -30,10 +31,14 @@ _BEHAVIORAL_FEATURES = [
 
 
 class RiskEngine:
-    def __init__(self, store: Store, settings: Settings, model: RiskModel | None = None) -> None:
+    def __init__(
+        self, store: Store, settings: Settings, model: RiskModel | None = None,
+        geoip: GeoIP | None = None,
+    ) -> None:
         self.store = store
         self.settings = settings
         self.model = model or RiskModel()
+        self.geoip = geoip or GeoIP(settings.geoip_mmdb_path)
 
     def evaluate(self, event: AuthEvent) -> RiskDecision:
         profile = self.store.get_profile(event.user_id)
@@ -111,6 +116,18 @@ class RiskEngine:
                 "action": action.value,
             },
             event.timestamp,
+        )
+
+        # Record the access for analytics/geolocation (browser geo preferred; IP as fallback).
+        ip_geo = self.geoip.lookup(event.ip)
+        lat = event.geo.lat if event.geo else (ip_geo or {}).get("lat")
+        lon = event.geo.lon if event.geo else (ip_geo or {}).get("lon")
+        self.store.record_access(
+            ts=event.timestamp, user_id=event.user_id, event_type=event.event_type.value,
+            action=action.value, band=band.value, risk_score=decision.risk_score,
+            lat=lat, lon=lon,
+            country=(ip_geo or {}).get("country"), city=(ip_geo or {}).get("city"),
+            top_reason=reason_codes[0] if reason_codes else None,
         )
 
         # Learn only from events we implicitly trust (low/moderate risk). High-risk or

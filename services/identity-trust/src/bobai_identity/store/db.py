@@ -76,6 +76,21 @@ CREATE TABLE IF NOT EXISTS webauthn_challenges (
     created REAL NOT NULL,
     PRIMARY KEY (user_id, kind)
 );
+CREATE TABLE IF NOT EXISTS access_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts REAL NOT NULL,
+    user_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    action TEXT NOT NULL,
+    band TEXT NOT NULL,
+    risk_score REAL NOT NULL,
+    lat REAL,
+    lon REAL,
+    country TEXT,
+    city TEXT,
+    top_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_access_ts ON access_log(ts);
 """
 
 
@@ -276,6 +291,76 @@ class Store:
                 (sign_count, user_id, credential_id),
             )
             self._conn.commit()
+
+    # ---- access log + analytics ----
+    def record_access(
+        self, ts: float, user_id: str, event_type: str, action: str, band: str,
+        risk_score: float, lat: float | None, lon: float | None,
+        country: str | None, city: str | None, top_reason: str | None,
+    ) -> None:
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO access_log
+                       (ts, user_id, event_type, action, band, risk_score,
+                        lat, lon, country, city, top_reason)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (ts, user_id, event_type, action, band, risk_score,
+                 lat, lon, country, city, top_reason),
+            )
+            self._conn.commit()
+
+    def access_recent(self, limit: int = 200) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM access_log ORDER BY ts DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def analytics_summary(self) -> dict:
+        with self._lock:
+            total = self._conn.execute("SELECT COUNT(*) c FROM access_log").fetchone()["c"]
+            by_action = {
+                r["action"]: r["c"]
+                for r in self._conn.execute(
+                    "SELECT action, COUNT(*) c FROM access_log GROUP BY action"
+                ).fetchall()
+            }
+            by_band = {
+                r["band"]: r["c"]
+                for r in self._conn.execute(
+                    "SELECT band, COUNT(*) c FROM access_log GROUP BY band"
+                ).fetchall()
+            }
+            by_country = {
+                (r["country"] or "Unknown"): r["c"]
+                for r in self._conn.execute(
+                    "SELECT country, COUNT(*) c FROM access_log GROUP BY country "
+                    "ORDER BY c DESC LIMIT 10"
+                ).fetchall()
+            }
+            top_reasons = [
+                {"reason": r["top_reason"], "count": r["c"]}
+                for r in self._conn.execute(
+                    "SELECT top_reason, COUNT(*) c FROM access_log "
+                    "WHERE top_reason IS NOT NULL GROUP BY top_reason ORDER BY c DESC LIMIT 6"
+                ).fetchall()
+            ]
+            distinct_users = self._conn.execute(
+                "SELECT COUNT(DISTINCT user_id) c FROM access_log"
+            ).fetchone()["c"]
+        step_up = by_action.get("step_up", 0)
+        deny = by_action.get("deny", 0)
+        return {
+            "total_events": total,
+            "distinct_users": distinct_users,
+            "by_action": by_action,
+            "by_band": by_band,
+            "by_country": by_country,
+            "top_reasons": top_reasons,
+            "step_up_count": step_up,
+            "deny_count": deny,
+            "step_up_rate": round((step_up + deny) / total, 3) if total else 0.0,
+        }
 
     def close(self) -> None:
         with self._lock:

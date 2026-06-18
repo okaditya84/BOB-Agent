@@ -204,6 +204,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "geoip2" },
     { name = "haversine" },
     { name = "numpy" },
     { name = "pydantic" },
@@ -219,14 +220,11 @@ dev = [
     { name = "httpx" },
     { name = "pytest" },
 ]
-geoip = [
-    { name = "geoip2" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "geoip2", marker = "extra == 'geoip'", specifier = ">=4.8" },
+    { name = "geoip2", specifier = ">=4.8" },
     { name = "haversine", specifier = ">=2.8" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "numpy", specifier = ">=1.26" },
@@ -238,7 +236,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
     { name = "webauthn", specifier = ">=2.5" },
 ]
-provides-extras = ["geoip", "dev"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "cbor2"

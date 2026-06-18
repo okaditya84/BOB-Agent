@@ -67,3 +67,16 @@ def test_webauthn_register_begin_returns_challenge(client):
 def test_webauthn_stepup_without_passkey_fails(client):
     r = client.post("/v1/webauthn/authenticate/begin", json={"user_id": "nobody"})
     assert r.status_code == 400  # no registered passkeys → cannot step up
+
+
+def test_analytics_summary_endpoint(client):
+    client.post("/v1/risk/evaluate", json=_event(BASE_TS, "dev-1", MUMBAI))
+    body = client.get("/v1/analytics/summary").json()
+    assert body["total_events"] >= 1
+    assert "by_action" in body
+
+
+def test_dashboard_served(client):
+    r = client.get("/dashboard")
+    assert r.status_code == 200
+    assert "BOBAI" in r.text

@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from .auth import WebAuthnService
 from .config import get_settings
 from .engine import RiskEngine
+from .geoip import GeoIP
 from .schemas import AuthEvent, RiskDecision
 from .store import Store
 
@@ -20,11 +23,14 @@ from .store import Store
 async def lifespan(app: FastAPI):
     settings = get_settings()
     store = Store(settings.db_path, settings.secret)
+    geoip = GeoIP(settings.geoip_mmdb_path)
     app.state.settings = settings
     app.state.store = store
-    app.state.engine = RiskEngine(store, settings)
+    app.state.geoip = geoip
+    app.state.engine = RiskEngine(store, settings, geoip=geoip)
     app.state.webauthn = WebAuthnService(store, settings)
     yield
+    geoip.close()
     store.close()
 
 
@@ -133,6 +139,21 @@ def decisions(user_id: str | None = None, limit: int = 100) -> list[dict[str, An
 @app.get("/v1/audit/verify")
 def audit_verify() -> dict[str, Any]:
     return app.state.store.verify_audit_chain()
+
+
+@app.get("/v1/analytics/summary")
+def analytics_summary() -> dict[str, Any]:
+    return app.state.store.analytics_summary()
+
+
+@app.get("/v1/analytics/access")
+def analytics_access(limit: int = 200) -> list[dict[str, Any]]:
+    return app.state.store.access_recent(limit=limit)
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard() -> str:
+    return (Path(__file__).parent / "dashboard.html").read_text(encoding="utf-8")
 
 
 @app.get("/v1/users/{user_id}/profile")

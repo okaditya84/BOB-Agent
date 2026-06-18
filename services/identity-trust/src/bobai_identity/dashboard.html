@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BOBAI — Identity Trust Analytics</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --bob:#F15A22; --bob-dark:#C8431A; --ink:#1f2430; --muted:#6b7280; --bg:#f5f6f8; --card:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+    header { background:var(--bob); color:#fff; padding:16px 24px; display:flex; align-items:center; gap:12px; }
+    header h1 { font-size:18px; margin:0; font-weight:700; letter-spacing:.3px; }
+    header .tag { font-size:12px; opacity:.9; background:rgba(255,255,255,.18); padding:3px 8px; border-radius:999px; }
+    .wrap { padding:20px 24px; max-width:1280px; margin:0 auto; }
+    .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+    .card { background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+    .card .label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+    .card .value { font-size:28px; font-weight:700; margin-top:6px; }
+    .card .value.alert { color:var(--bob-dark); }
+    .grid2 { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; margin-bottom:18px; }
+    .panel { background:var(--card); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+    .panel h2 { font-size:14px; margin:0 0 12px; }
+    #map { height:340px; border-radius:8px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { text-align:left; padding:8px 10px; border-bottom:1px solid #eef0f3; }
+    th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; }
+    .badge { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; color:#fff; }
+    .b-low{background:#16a34a;} .b-medium{background:#d97706;} .b-high{background:#ea580c;} .b-critical{background:#dc2626;}
+    .reasons li { font-size:13px; margin-bottom:6px; color:#374151; }
+    .muted { color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BOBAI · Identity Trust &amp; Access Analytics</h1>
+    <span class="tag">Privacy-first · risk-based · explainable</span>
+    <span class="tag" id="updated"></span>
+  </header>
+  <div class="wrap">
+    <div class="cards">
+      <div class="card"><div class="label">Total events</div><div class="value" id="total">–</div></div>
+      <div class="card"><div class="label">Distinct users</div><div class="value" id="users">–</div></div>
+      <div class="card"><div class="label">Step-up / deny rate</div><div class="value alert" id="friction">–</div></div>
+      <div class="card"><div class="label">Denied (blocked)</div><div class="value alert" id="deny">–</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h2>Access locations (risk-coloured)</h2><div id="map"></div></div>
+      <div class="panel"><h2>Actions taken</h2><canvas id="actionChart" height="150"></canvas>
+        <h2 style="margin-top:18px">Risk bands</h2><canvas id="bandChart" height="120"></canvas></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h2>Recent access events</h2>
+        <table><thead><tr><th>User</th><th>Activity</th><th>Risk</th><th>Action</th><th>Location</th><th>Why flagged</th></tr></thead>
+        <tbody id="rows"></tbody></table>
+      </div>
+      <div class="panel"><h2>Top risk reasons</h2><ul class="reasons" id="reasons"></ul>
+        <h2 style="margin-top:14px">By country</h2><ul class="reasons" id="countries"></ul>
+      </div>
+    </div>
+    <p class="muted">Locations are captured with user consent (browser geolocation) or estimated from IP. Decisions are explainable and written to a tamper-evident audit log.</p>
+  </div>
+  <script>
+    const BAND = { low:'#16a34a', medium:'#d97706', high:'#ea580c', critical:'#dc2626' };
+    let map, markers, actionChart, bandChart;
+    function initMap(){
+      map = L.map('map').setView([20.5937, 78.9629], 4);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution:'© OpenStreetMap', maxZoom:18 }).addTo(map);
+      markers = L.layerGroup().addTo(map);
+    }
+    async function load(){
+      const [summary, access] = await Promise.all([
+        fetch('/v1/analytics/summary').then(r=>r.json()),
+        fetch('/v1/analytics/access?limit=300').then(r=>r.json())
+      ]);
+      document.getElementById('total').textContent = summary.total_events;
+      document.getElementById('users').textContent = summary.distinct_users;
+      document.getElementById('friction').textContent = (summary.step_up_rate*100).toFixed(0)+'%';
+      document.getElementById('deny').textContent = summary.deny_count;
+      document.getElementById('updated').textContent = 'updated '+new Date().toLocaleTimeString();
+
+      markers.clearLayers();
+      access.filter(a=>a.lat!=null && a.lon!=null).forEach(a=>{
+        L.circleMarker([a.lat,a.lon], { radius:6, color:BAND[a.band]||'#666', fillColor:BAND[a.band]||'#666', fillOpacity:.7, weight:1 })
+          .bindPopup(`<b>${a.user_id}</b><br>${a.event_type} · ${a.action}<br>risk ${a.risk_score} (${a.band})<br>${a.city||''} ${a.country||''}`)
+          .addTo(markers);
+      });
+
+      const rows = document.getElementById('rows'); rows.innerHTML='';
+      access.slice(0,40).forEach(a=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${a.user_id}</td><td>${a.event_type}</td>
+          <td>${a.risk_score}</td><td><span class="badge b-${a.band}">${a.action}</span></td>
+          <td>${[a.city,a.country].filter(Boolean).join(', ')||'—'}</td>
+          <td class="muted">${a.top_reason||'—'}</td>`;
+        rows.appendChild(tr);
+      });
+
+      const reasons=document.getElementById('reasons'); reasons.innerHTML='';
+      summary.top_reasons.forEach(r=>{ const li=document.createElement('li'); li.textContent=`(${r.count}) ${r.reason}`; reasons.appendChild(li); });
+      const countries=document.getElementById('countries'); countries.innerHTML='';
+      Object.entries(summary.by_country).forEach(([c,n])=>{ const li=document.createElement('li'); li.textContent=`${c}: ${n}`; countries.appendChild(li); });
+
+      drawChart('actionChart', summary.by_action, 'action', a => BAND[{allow:'low',monitor:'medium',step_up:'high',deny:'critical'}[a]] || '#888');
+      drawChart('bandChart', summary.by_band, 'band', b => BAND[b]||'#888');
+    }
+    function drawChart(id, obj, kind, colorFn){
+      const labels=Object.keys(obj), data=Object.values(obj);
+      const ctx=document.getElementById(id);
+      const ref = id==='actionChart' ? 'actionChart' : 'bandChart';
+      if(window[ref]) window[ref].destroy();
+      window[ref] = new Chart(ctx, { type:'bar',
+        data:{ labels, datasets:[{ data, backgroundColor:labels.map(colorFn) }] },
+        options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}} } });
+    }
+    initMap(); load(); setInterval(load, 10000);
+  </script>
+</body>
+</html>
