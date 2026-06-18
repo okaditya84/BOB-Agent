@@ -39,5 +39,23 @@ docs/                 # Architecture, demo script, regulatory mapping
 - **NIST SP 800-63B-4** — Authentication Assurance Levels (AAL1/2/3); phishing-resistant passkeys.
 - **DPDP Act 2023** — privacy-first, data-minimization, consent.
 
+## Run
+
+```bash
+cp .env.example .env     # fill provider keys (Google/OpenRouter/Groq is enough)
+make up                  # backend services + branded BOBAI (LibreChat) stack
+make test                # 88 tests across services
+```
+
+- **BOBAI UI:** http://localhost:3080  (register first account → ADMIN)
+- **Risk analytics dashboard:** http://localhost:8001/dashboard
+
+## Docs
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — services, data flow, ports
+- [`docs/DEMO.md`](docs/DEMO.md) — scripted judge demo (step-up, dashboard, KYC, assistant)
+- [`docs/PITCH.md`](docs/PITCH.md) — problem-statement alignment + RBI 2025 / NIST / DPDP
+
 ## Status
-See the task list / `docs/` for phase progress. The Identity Trust engine is built and tested first.
+Built & verified: Identity Trust engine + analytics dashboard, KYC + document-fraud,
+RAG assistant (llm-rotate), MCP server (5 tools), branded BOBAI UI. 88 tests green.
+Remaining: WebAuthn login-flow hook, eKYC face-match, Obot governance. See the task list.
