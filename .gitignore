@@ -1,0 +1,27 @@
+# Secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Data / runtime
+data/*.db
+data/*.mmdb
+*.log
+
+# Node
+node_modules/
+.npm/
+
+# OS
+.DS_Store

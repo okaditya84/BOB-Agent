@@ -1,0 +1,570 @@
+{
+  "meta": {
+    "title": "Bank of Baroda - Account, Deposit & Loan Document Requirements",
+    "source": "Bank of Baroda official website (bankofbaroda.bank.in) - personal banking, business banking, NRI banking, Banking Mantra articles, and official KYC/OVD circular",
+    "last_compiled": "2026-06-15",
+    "disclaimer": "Document and eligibility rules are revised periodically via RBI/BOB circulars. Display a 'last verified' date in the app and recommend users confirm with their home branch / bankofbaroda.bank.in before final submission.",
+    "usage_note": "Each product's full requirement = core_kyc (always) + the product's own 'common_documents' + the 'additional_documents' for the matched applicant_profile (salaried / self_employed / nri / senior_citizen / minor / pensioner / etc.)"
+  },
+
+  "core_kyc": {
+    "description": "Baseline KYC required for almost every product below.",
+    "identity_and_address_ovd_pick_one": [
+      "Passport",
+      "Driving Licence (with photo)",
+      "Aadhaar Card (proof of possession of Aadhaar number)",
+      "Voter's ID Card (Election Commission of India)",
+      "NREGA Job Card (signed by State Govt officer)",
+      "Letter issued by National Population Register (NPR) with Name & Address"
+    ],
+    "mandatory_tax_id_pick_one": [
+      "PAN Card",
+      "Form 60 (declaration if PAN not available)"
+    ],
+    "deemed_ovd_for_current_address_if_needed_pick_one": [
+      "Utility bill - electricity/telephone/postpaid mobile/piped gas (not older than 2 months)",
+      "Property or Municipal Tax receipt (latest)",
+      "Pension Payment Order (PPO) issued by Govt departments/PSUs (if it has address)",
+      "Allotment letter / registered leave-and-licence agreement from employer (Govt/PSU/listed company)",
+      "For foreign nationals: document from foreign Govt department or letter from Foreign Embassy/Mission in India"
+    ],
+    "universal_extras": [
+      "2 recent passport-size colour photographs",
+      "Duly filled and signed Account/Application Opening Form (AOF)",
+      "Specimen signature"
+    ],
+    "minor_extras": [
+      "Birth Certificate (issued by Gram Panchayat / NAC / Municipal Corporation)",
+      "Guardian's full core_kyc documents",
+      "Proof of relationship/guardianship",
+      "Recent photo of minor (if old enough)"
+    ]
+  },
+
+  "savings_accounts": {
+    "category_label": "Savings Account",
+    "common_documents": [
+      "core_kyc (identity_and_address_ovd + mandatory_tax_id + universal_extras)",
+      "Initial deposit (cash/cheque/DD), unless zero-balance variant"
+    ],
+    "sub_types": [
+      {
+        "id": "bob_super_savings_account",
+        "name": "bob Super Savings Account",
+        "description": "Premium savings account - auto-sweep, locker discount, free DD",
+        "additional_documents": []
+      },
+      {
+        "id": "basic_savings_bank_deposit_account",
+        "name": "Basic Savings Bank Deposit Account (BSBDA)",
+        "description": "Zero-balance financial inclusion account",
+        "additional_documents": [],
+        "notes": "RBI allows relaxed/small-account KYC for this variant"
+      },
+      {
+        "id": "bob_advantage_savings_account",
+        "name": "bob Advantage Savings Account",
+        "description": "Low minimum-balance account with added benefits",
+        "additional_documents": []
+      },
+      {
+        "id": "bob_lite_savings_account",
+        "name": "bob Lite Savings Account",
+        "description": "Entry-level account with RuPay Platinum debit card",
+        "additional_documents": []
+      },
+      {
+        "id": "salary_advantage_account",
+        "name": "Salary / Salary Advantage Account",
+        "description": "Opened via employer salary tie-up",
+        "additional_documents": [
+          "Salary certificate/letter from employer",
+          "Employee ID card",
+          "Employer's payroll/authorization letter"
+        ]
+      },
+      {
+        "id": "senior_citizen_savings_account",
+        "name": "Senior Citizen Savings Account",
+        "description": "60+ benefits: higher FD rates, priority service",
+        "additional_documents": [
+          "Age proof showing DOB (Passport/PAN/Driving Licence/Voter ID/Birth Certificate)"
+        ]
+      },
+      {
+        "id": "minor_savings_account",
+        "name": "Minor's Savings Account",
+        "description": "For individuals under 18, operated by guardian",
+        "additional_documents": [
+          "Minor's Birth Certificate",
+          "Guardian's full core_kyc documents",
+          "Proof of relationship/guardianship",
+          "Recent photo of minor (if old enough)"
+        ]
+      },
+      {
+        "id": "govt_employee_savings_account",
+        "name": "Savings Account for Central/State Govt Employees",
+        "description": "Tailored for government staff",
+        "additional_documents": [
+          "Government Employee ID card / appointment letter"
+        ]
+      },
+      {
+        "id": "nre_savings_account",
+        "name": "NRE Savings Account",
+        "description": "For NRIs - holds foreign income in INR, fully repatriable",
+        "additional_documents": [
+          "Passport with valid visa/residence permit",
+          "Overseas address proof (utility bill/bank statement/driving licence of resident country)",
+          "PIO/OCI card (if applicable)",
+          "Recent photograph",
+          "Employment contract/work permit/student ID",
+          "PAN or Form 60"
+        ]
+      },
+      {
+        "id": "nro_savings_account",
+        "name": "NRO Savings Account",
+        "description": "For NRIs - manages India-sourced income (rent, dividend, pension)",
+        "additional_documents": [
+          "Same as NRE Savings Account",
+          "FEMA declaration of source of funds"
+        ]
+      }
+    ]
+  },
+
+  "current_accounts": {
+    "category_label": "Current Account",
+    "common_documents": [
+      "Current Account AOF",
+      "core_kyc of proprietor / all partners / all directors / authorised signatories",
+      "Photographs of all signatories",
+      "FATCA/CRS self-certification"
+    ],
+    "sub_types": [
+      {
+        "id": "baroda_small_business_current_account",
+        "name": "Baroda Small Business Current Account (BSBCA)",
+        "description": "For small traders/merchants - 'Pay as you use' model"
+      },
+      {
+        "id": "baroda_advantage_current_account",
+        "name": "Baroda Advantage Current Account",
+        "description": "Small & medium businesses - low Quarterly Average Balance, free net banking"
+      },
+      {
+        "id": "bob_premium_current_account",
+        "name": "bob Premium Current Account (BPCA)",
+        "description": "Medium-to-large businesses"
+      },
+      {
+        "id": "bob_premium_current_account_privilege",
+        "name": "bob Premium Current Account - Privilege",
+        "description": "Large enterprises - unlimited transactions, absolute liquidity"
+      }
+    ],
+    "additional_documents_by_constitution": {
+      "sole_proprietorship": [
+        "Proof of business name/existence - any 2 of: GST registration, Shop & Establishment certificate, Sales/Income-Tax returns in proprietor's name, CST/VAT certificate, IEC code, licence from statutory professional body, utility bill in business name"
+      ],
+      "partnership_firm": [
+        "Registered Partnership Deed (or certified copy)",
+        "PAN of the firm",
+        "core_kyc of all partners",
+        "Authorisation letter naming operating signatories",
+        "One business-proof document (as in sole_proprietorship) in firm's name"
+      ],
+      "private_or_public_limited_company": [
+        "Certificate of Incorporation",
+        "Memorandum & Articles of Association (MOA/AOA)",
+        "Board Resolution authorising account opening + naming signatories",
+        "PAN of company",
+        "core_kyc of all directors/authorised signatories",
+        "List of directors"
+      ],
+      "llp": [
+        "Certificate of Incorporation (LLP)",
+        "LLP Agreement",
+        "PAN of LLP",
+        "core_kyc of designated partners",
+        "Partner/Board resolution"
+      ],
+      "huf": [
+        "HUF declaration/deed",
+        "PAN of HUF",
+        "core_kyc of Karta and adult co-parceners"
+      ],
+      "trust_society_association": [
+        "Trust Deed / Registration Certificate",
+        "PAN of entity",
+        "List of trustees/managing-committee members with core_kyc",
+        "Resolution authorising account opening"
+      ]
+    }
+  },
+
+  "term_deposits": {
+    "category_label": "Fixed Deposit / Recurring Deposit",
+    "common_documents": [
+      "Term/RD application form (or online request if existing KYC-compliant customer)",
+      "core_kyc (waived for existing KYC-compliant customers opening via net/mobile banking)",
+      "PAN / Form 60",
+      "2 photographs (new customers)",
+      "Nomination form"
+    ],
+    "sub_types": [
+      {
+        "id": "regular_fixed_deposit",
+        "name": "Regular Fixed Deposit",
+        "description": "Tenure 7 days to 10 years; premature withdrawal & loan-against-FD allowed",
+        "additional_documents": []
+      },
+      {
+        "id": "baroda_tax_saving_fixed_deposit",
+        "name": "Baroda Tax Saving Fixed Deposit (RIRD / MIP / QIP variants)",
+        "description": "5-year lock-in; Section 80C benefit up to Rs 1.5 lakh; no premature withdrawal or loan against this FD",
+        "additional_documents": [
+          "PAN is mandatory (Form 60 NOT accepted for this product)"
+        ]
+      },
+      {
+        "id": "recurring_deposit",
+        "name": "Recurring Deposit (RD)",
+        "description": "Tenure 6 months to 10 years; monthly instalments from Rs 100",
+        "additional_documents": [
+          "Standing instruction / auto-debit mandate for monthly instalment"
+        ]
+      },
+      {
+        "id": "senior_citizen_fd",
+        "name": "Senior Citizen FD",
+        "description": "Approx 0.50% additional interest over regular FD rates",
+        "additional_documents": [
+          "Age proof (60+)"
+        ]
+      },
+      {
+        "id": "capital_gain_account_scheme",
+        "name": "Capital Gain Account Scheme (CGAS)",
+        "description": "Tax exemption on capital gains; savings and term-deposit account options",
+        "additional_documents": [
+          "Copy of sale deed of the asset transferred",
+          "Declaration as per Income Tax Rule 1962",
+          "PAN"
+        ]
+      },
+      {
+        "id": "nri_fixed_deposits",
+        "name": "NRE / NRO / FCNR Fixed Deposits",
+        "description": "For NRIs; FCNR held in foreign currency (USD, GBP, EUR, AUD, CAD etc.)",
+        "additional_documents": [
+          "Passport + visa copy",
+          "Overseas address proof",
+          "PIO/OCI card (if applicable)",
+          "FIRC/inward remittance proof or source-of-funds declaration",
+          "FEMA declaration"
+        ]
+      }
+    ]
+  },
+
+  "loans": {
+    "home_loan": {
+      "category_label": "Home Loan",
+      "common_documents": [
+        "Home Loan application form, duly filled & signed, with photographs",
+        "Identity proof: PAN (mandatory if loan > Rs 10 lakh) / Aadhaar / Voter ID / Driving Licence / Passport",
+        "Address proof: Aadhaar / Driving Licence / Voter ID / Passport / Ration Card / Registered Rent Agreement",
+        "Last 6 months' bank account statement",
+        "Processing-fee cheque"
+      ],
+      "property_documents_everyone": [
+        "Allotment letter / registered Sale Deed / Agreement to Sell (builder or seller)",
+        "NOC from society/builder",
+        "Approved/sanctioned building plan",
+        "Chain-of-title documents / Encumbrance Certificate (typically last 13-30 years)",
+        "Property tax receipts",
+        "Possession letter / Share certificate (co-op society, if applicable)"
+      ],
+      "applicant_profiles": {
+        "salaried": [
+          "Last 6 months' salary slips",
+          "Form 16 / IT Returns for last 2 years",
+          "Employment/appointment/confirmation/increment letter (proves employment duration)",
+          "Bank statement showing salary credit",
+          "Investment proofs (FDs, shares), if used to support income"
+        ],
+        "self_employed": [
+          "IT Returns for last 3 years (individual & business)",
+          "Audited Balance Sheet & Profit-and-Loss statements (last 2-3 years), CA-certified",
+          "Business proof: GST / Shop Act / Trade licence / registration certificate",
+          "Business address proof",
+          "Partnership deed / Certificate of Incorporation (as applicable)",
+          "Business bank account statement"
+        ],
+        "nri": [
+          "Valid passport & visa copy",
+          "Work permit / employment contract / appointment letter",
+          "Overseas salary slips (last 6 months) + employer ID",
+          "Overseas bank statements (last 6 months)",
+          "IT Returns - India & overseas (last 2 years)",
+          "Power of Attorney (POA) to a representative in India",
+          "Continuous Discharge Certificate (CDC) for seafarers, if applicable",
+          "Overseas credit-bureau report, if available"
+        ],
+        "pensioner": [
+          "Pension Payment Order (PPO)",
+          "Proof that pension will continue through the loan tenure",
+          "3 months' bank statement showing pension credit"
+        ]
+      }
+    },
+
+    "personal_loan": {
+      "category_label": "Personal Loan",
+      "eligibility_note": "NRIs are NOT eligible for BOB Personal Loans (per official BOB FAQ)",
+      "applicant_profiles": {
+        "salaried": [
+          "Identity proof: Aadhaar / PAN / Voter ID / Passport / Driving Licence",
+          "Address proof: Driving Licence / Aadhaar / utility bills / bank statement",
+          "Income proof: Form 16, last 3 months' salary slips/salary certificate, last 6 months' bank statement (salary account)",
+          "Latest colour passport-size photograph",
+          "Duly filled application form"
+        ],
+        "self_employed": [
+          "Identity & address proof same as salaried",
+          "Proof of business existence: GST registration / trade licence / business registration certificate",
+          "ITR with income computation",
+          "Business bank statements (6 months)"
+        ],
+        "pensioner": [
+          "Identity proof: Aadhaar / PAN / Voter ID / Passport / Driving Licence",
+          "Address proof: PAN / Driving Licence / utility bills / bank statement",
+          "Income proof: Pension document / PPO / bank account statements",
+          "Photograph"
+        ]
+      }
+    },
+
+    "vehicle_loan": {
+      "category_label": "Vehicle Loan (New/Used Car, Two-Wheeler)",
+      "eligibility_note": "Applicant >= 21 yrs, co-applicant >= 18 yrs; (age + repayment tenure) <= 70 yrs",
+      "common_documents": [
+        "Duly filled application form",
+        "Identity proof: PAN / Aadhaar / Driving Licence / Passport / Voter ID",
+        "Age proof: Passport / Ration Card / Aadhaar / PAN / Birth Certificate",
+        "Address proof (core_kyc list)",
+        "Photographs",
+        "Vehicle quotation / proforma invoice from dealer"
+      ],
+      "applicant_profiles": {
+        "salaried": [
+          "Last 3 months' salary slips",
+          "Form 16",
+          "6 months' bank statement"
+        ],
+        "self_employed": [
+          "ITR for 2-3 years",
+          "Business proof",
+          "Bank statements"
+        ]
+      },
+      "used_vehicle_additional": [
+        "RC book",
+        "Insurance copy",
+        "Valuation/inspection report"
+      ]
+    },
+
+    "education_loan": {
+      "category_label": "Education Loan",
+      "student_applicant_documents": [
+        "core_kyc: age proof, photo ID, address proof",
+        "Mark sheets - 10th, 12th, graduation (as applicable to course level)",
+        "Entrance exam scorecard (CAT/CMAT/JEE/NEET/CET/GMAT/GRE/TOEFL/IELTS etc.)",
+        "Proof of admission: Offer/Admission letter (conditional letter accepted for study abroad)",
+        "Passport + visa copy (mandatory for studies abroad)",
+        "Fee structure/schedule of expenses from institution",
+        "Scholarship letter, if any"
+      ],
+      "co_applicant_guarantor_note": "Normally parent/guardian; for married applicants - spouse or parent-in-law",
+      "co_applicant_documents": [
+        "Full core_kyc + photographs"
+      ],
+      "co_applicant_income_profiles": {
+        "salaried": [
+          "Last 3 months' salary slips or salary certificate",
+          "Form 16 & IT Returns (acknowledged)",
+          "Last 6 months' bank statement (salary account)"
+        ],
+        "self_employed": [
+          "Business proof/registration",
+          "IT Returns (last 2-3 years) with income computation",
+          "CA-certified Balance Sheet & P&L",
+          "Last 6 months' bank statements"
+        ]
+      },
+      "collateral_documents_above_7_5_lakh": [
+        "Title deed and ownership documents of the property offered"
+      ],
+      "other_documents": [
+        "Net-worth statement of co-applicant/guarantor",
+        "Vidya Lakshmi Portal application reference (BOB education loans routed via this Govt portal)",
+        "Margin-money proof, if applicable",
+        "Signed Education Loan application form + bank's checklist"
+      ]
+    },
+
+    "gold_loan": {
+      "category_label": "Gold Loan",
+      "common_documents": [
+        "Duly filled Gold Loan application form",
+        "Identity proof: PAN / Passport / Voter ID / Driving Licence / Aadhaar",
+        "Address proof: Aadhaar / Voter ID / Passport / recent utility bill / ration card",
+        "2 recent passport-size photographs",
+        "Self-declaration of ownership of the gold ornaments/coins offered as security"
+      ],
+      "agri_gold_loan_additional": [
+        "Land record/ownership documents (or tenancy proof) showing agricultural land holding"
+      ],
+      "note": "Income proof is generally NOT required for standard retail gold loans"
+    },
+
+    "mortgage_loan_lap": {
+      "category_label": "Mortgage Loan / Loan Against Property (LAP)",
+      "common_documents": [
+        "Application form with photo & signature",
+        "Identity proof: Aadhaar / PAN / Passport / Voter ID",
+        "Address proof - residence AND office: Aadhaar / Voter ID / Driving Licence / utility bill",
+        "Last 6 months' bank statements",
+        "Property documents: original title deeds with complete chain of ownership, latest property-tax/maintenance receipts, NOC/permission for mortgage from society or development authority, approved building plan"
+      ],
+      "applicant_profiles": {
+        "salaried": [
+          "Last 6 months' salary slips",
+          "Form 16"
+        ],
+        "self_employed": [
+          "ITR (last 3 years)",
+          "Audited Balance Sheet & P&L"
+        ],
+        "nri": [
+          "Passport & visa copy",
+          "Overseas salary certificate/income statement (attested by BOB's foreign office or competent local authority)",
+          "Biodata - education, job history, profession",
+          "Employment contract"
+        ]
+      }
+    },
+
+    "msme_business_loan": {
+      "category_label": "MSME / Business Loan (incl. Mudra Loan)",
+      "schemes_covered": [
+        "PM Mudra Yojana - Shishu (<= Rs 50,000)",
+        "PM Mudra Yojana - Kishore (Rs 50,000 - 5 lakh)",
+        "PM Mudra Yojana - Tarun (Rs 5-10 lakh)",
+        "PM Mudra Yojana - Tarun Plus (Rs 10-20 lakh)",
+        "Digital Mudra Loan",
+        "General MSME Term Loan / Working Capital",
+        "CGTMSE-backed loans",
+        "Stand-Up India",
+        "Sector schemes (textiles, healthcare, solar, etc.)"
+      ],
+      "common_documents": [
+        "Duly filled application form with photographs",
+        "Identity proof: Aadhaar / PAN / Driving Licence / Passport / Voter ID - of all applicants/partners/directors",
+        "Residence proof: latest utility bills / Aadhaar / Voter ID / Passport / bank statement - of all applicants",
+        "Business proof: Udyam/Udyog Aadhaar registration, GST registration, trade licence, shop & establishment certificate (as applicable)",
+        "Last 2-3 years' ITR with income computation, audited Balance Sheet & P&L",
+        "Last 6 months' business bank statements",
+        "Proof of business continuity (ITR/trade licence/sales-tax certificate)",
+        "Entity-specific docs: Partnership deed, OR Certificate of Incorporation + MOA/AOA + Board resolution + list of directors (companies)",
+        "Collateral/property documents (lease/title deed), where security is offered",
+        "Projected financials (next 1-2 years) for working-capital/term-loan assessment"
+      ],
+      "digital_mudra_loan_upto_50000_specific": [
+        "Last 6 months' bank statement (downloaded digitally via net/mobile banking/email)",
+        "Business registration details (if applicable)",
+        "KYC of business and proprietor",
+        "Details of associate concerns and existing loans"
+      ]
+    },
+
+    "agriculture_loan_kcc": {
+      "category_label": "Agriculture Loan / Kisan Credit Card (Baroda KCC - BKCC)",
+      "common_documents": [
+        "Duly filled KCC application form",
+        "Identity proof: Aadhaar / Voter ID / Driving Licence / Passport",
+        "Address proof (core_kyc list)",
+        "Land-holding document: Revenue-authority-certified land record or Online Land Record extract (ownership proof, OR lease/tenancy agreement for tenant farmers/share-croppers)",
+        "Passport-size photographs",
+        "Existing loan/no-dues details, if any"
+      ],
+      "animal_husbandry_fisheries_kcc_additional": [
+        "Same core documents as above",
+        "Proof/details of the activity (dairy unit, poultry shed, fishery, etc.)",
+        "Collateral documents (land mortgage/charge) - mandatory if loan amount exceeds Rs 1.6 lakh"
+      ]
+    }
+  },
+
+  "other_products": {
+    "ppf_account": {
+      "category_label": "Public Provident Fund (PPF) Account",
+      "documents": [
+        "AOF for PPF",
+        "Aadhaar Card AND PAN/Form 60 - both mandatory (per Govt Savings Promotion Rules, 2023)",
+        "Identity/address proof - core_kyc OVD list",
+        "Photographs",
+        "Nomination form"
+      ],
+      "eligibility_note": "NRIs and HUFs cannot open a PPF account; joint accounts not allowed"
+    },
+    "nri_banking_overview": {
+      "category_label": "NRI Banking Account Types",
+      "account_types": [
+        {
+          "id": "nre",
+          "name": "NRE (Non-Resident External)",
+          "purpose": "Park foreign income in INR; fully repatriable"
+        },
+        {
+          "id": "nro",
+          "name": "NRO (Non-Resident Ordinary)",
+          "purpose": "Manage India-sourced income (rent, dividends, pension); repatriation capped at approx USD 1 million/year"
+        },
+        {
+          "id": "fcnr",
+          "name": "FCNR (Foreign Currency Non-Resident)",
+          "purpose": "Hold deposits in foreign currency (USD, GBP, EUR, AUD, CAD, etc.)"
+        }
+      ],
+      "note": "All three available as savings/current/term-deposit variants; use NRE/NRO Savings Account documents plus product-specific FEMA declarations"
+    }
+  },
+
+  "source_pages": [
+    "bankofbaroda.bank.in/personal-banking/accounts/saving-accounts",
+    "bankofbaroda.bank.in/personal-banking/accounts/current-accounts",
+    "bankofbaroda.bank.in/personal-banking/accounts/term-deposit/fixed-deposit/tax-saving-fixed-deposit",
+    "bankofbaroda.bank.in/loans/vehicle-loan",
+    "bankofbaroda.bank.in/loans/education-loan",
+    "bankofbaroda.bank.in/loans/gold-loan",
+    "bankofbaroda.bank.in/business-banking/msme-banking",
+    "bankofbaroda.bank.in/business-banking/msme-banking/loans-and-advances/digital-mudra-loan",
+    "bankofbaroda.bank.in/personal-banking/loans/pradhan-mantri-mudra-yojana",
+    "bankofbaroda.bank.in/business-banking/rural-and-agri/loans-and-advances/baroda-kisan-credit-card",
+    "bankofbaroda.bank.in/banking-mantra/loans-borrowings/articles/documents-required-for-home-loan",
+    "bankofbaroda.bank.in/banking-mantra/loans-borrowings/articles/documents-required-for-personal-loan",
+    "bankofbaroda.bank.in/banking-mantra/loans-borrowings/articles/documents-required-for-education-loan",
+    "bankofbaroda.bank.in/banking-mantra/loans-borrowings/articles/documents-required-to-get-a-car-loan",
+    "bankofbaroda.bank.in/banking-mantra/loans-borrowings/articles/documents-required-for-loan-against-property-a-complete-checklist",
+    "bankofbaroda.bank.in/banking-mantra/loans-borrowings/articles/what-are-the-gold-loan-eligibility-criteria",
+    "bankofbaroda.bank.in/writereaddata/images/pdf/List-Of-Valid-KYC-Documents-For-Account-Opening-01-07-2019.pdf",
+    "bankofbaroda.bank.in/nri-banking/products-services/accounts/",
+    "bankofbaroda.bank.in/accounts/baroda-public-provident-fund",
+    "bankofbaroda.bank.in/banking-mantra/savings/articles/nri-account-opening-documents-guide"
+  ]
+}
