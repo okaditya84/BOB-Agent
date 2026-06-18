@@ -80,3 +80,15 @@ def test_dashboard_served(client):
     r = client.get("/dashboard")
     assert r.status_code == 200
     assert "BOBAI" in r.text
+
+
+def test_login_page_served(client):
+    r = client.get("/login")
+    assert r.status_code == 200
+    assert "Secure Access" in r.text
+
+
+def test_public_config(client):
+    r = client.get("/v1/config")
+    assert r.status_code == 200
+    assert "bobai_ui_url" in r.json()

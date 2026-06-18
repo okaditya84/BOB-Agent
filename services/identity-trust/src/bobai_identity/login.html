@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BOBAI — Secure Access</title>
+  <style>
+    :root { --bob:#F15A22; --bob-dark:#C8431A; --ink:#1f2430; --muted:#6b7280; --bg:#f3f4f6; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:linear-gradient(135deg,#fff,#fde8df); color:var(--ink);
+           min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .card { background:#fff; width:420px; max-width:92vw; border-radius:16px; padding:30px;
+            box-shadow:0 12px 40px rgba(0,0,0,.12); }
+    .brand { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .brand .dot { width:34px; height:34px; border-radius:9px; background:var(--bob); color:#fff;
+                  font-weight:800; display:flex; align-items:center; justify-content:center; }
+    h1 { font-size:20px; margin:0; }
+    .sub { color:var(--muted); font-size:13px; margin:2px 0 22px; }
+    label { font-size:12px; color:var(--muted); font-weight:600; }
+    input { width:100%; padding:11px 12px; margin:6px 0 16px; border:1px solid #d7dae0;
+            border-radius:9px; font-size:14px; }
+    button { width:100%; padding:12px; border:0; border-radius:9px; background:var(--bob);
+             color:#fff; font-weight:700; font-size:15px; cursor:pointer; }
+    button:hover { background:var(--bob-dark); }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .status { margin-top:18px; padding:14px; border-radius:10px; font-size:13px; display:none; }
+    .status.show { display:block; }
+    .s-allow { background:#e8f6ee; border:1px solid #b7e3c6; }
+    .s-step { background:#fff4e6; border:1px solid #ffd8a8; }
+    .s-deny { background:#fdecec; border:1px solid #f5c2c2; }
+    .meter { height:8px; border-radius:99px; background:#eee; overflow:hidden; margin:10px 0; }
+    .meter > div { height:100%; transition:width .4s; }
+    .reasons { margin:8px 0 0; padding-left:18px; color:#374151; }
+    .reasons li { margin-bottom:4px; }
+    .chip { font-size:11px; color:var(--muted); }
+    a.go { display:inline-block; margin-top:10px; color:var(--bob-dark); font-weight:700; text-decoration:none; }
+    .consent { font-size:11px; color:var(--muted); margin-top:-8px; margin-bottom:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><div class="dot">B</div><h1>BOBAI Secure Access</h1></div>
+    <p class="sub">Risk-based, privacy-first sign-in. Step-up verification only when risk is elevated.</p>
+
+    <label>Customer ID / Username</label>
+    <input id="user" placeholder="e.g. ravi.kumar" autocomplete="username" />
+    <label>Password</label>
+    <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+    <p class="consent" id="consent">📍 We request your location to protect your account (consent-based).</p>
+    <button id="signin">Sign in securely</button>
+
+    <div class="status" id="status"></div>
+  </div>
+
+  <script type="module">
+    import { startRegistration, startAuthentication }
+      from 'https://esm.sh/@simplewebauthn/browser@13';
+
+    const BAND = { low:'#16a34a', medium:'#d97706', high:'#ea580c', critical:'#dc2626' };
+    let UI_URL = 'http://localhost:3080';
+    fetch('/v1/config').then(r=>r.json()).then(c=>{ if(c.bobai_ui_url) UI_URL=c.bobai_ui_url; }).catch(()=>{});
+
+    // Lightweight, privacy-preserving device fingerprint (no PII leaves the device raw).
+    async function deviceFingerprint() {
+      const parts = [navigator.userAgent, navigator.language, screen.width+'x'+screen.height,
+                     new Date().getTimezoneOffset(), navigator.hardwareConcurrency||0];
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('|')));
+      return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    function getGeo() {
+      return new Promise(res => {
+        if (!navigator.geolocation) return res(null);
+        navigator.geolocation.getCurrentPosition(
+          p => res({ lat:p.coords.latitude, lon:p.coords.longitude, source:'client' }),
+          () => res(null), { timeout:6000 });
+      });
+    }
+
+    const statusEl = document.getElementById('status');
+    function show(cls, html){ statusEl.className = 'status show '+cls; statusEl.innerHTML = html; }
+    function decisionHtml(d, extra=''){
+      const pct = Math.round(d.risk_score*100);
+      const reasons = d.reason_codes.map(r=>`<li>${r}</li>`).join('');
+      return `<b>Risk: ${pct}% · ${d.band.toUpperCase()} · ${d.action.replace('_',' ')}</b>
+        <div class="meter"><div style="width:${pct}%;background:${BAND[d.band]||'#888'}"></div></div>
+        <ul class="reasons">${reasons}</ul>
+        <p class="chip">${d.policy_rationale}</p>${extra}`;
+    }
+    const grantHtml = `<a class="go" href="${'__UI__'}">→ Continue to BOBAI</a>`;
+
+    async function evaluate(userId){
+      const [fp, geo] = await Promise.all([deviceFingerprint(), getGeo()]);
+      const event = { user_id:userId, event_type:'login', timestamp: Date.now()/1000,
+                      device_fingerprint:fp };
+      if (geo) event.geo = geo;
+      const r = await fetch('/v1/risk/evaluate', { method:'POST',
+        headers:{'content-type':'application/json'}, body: JSON.stringify(event) });
+      return { decision: await r.json(), event };
+    }
+
+    async function stepUp(userId, event){
+      let begin = await fetch('/v1/webauthn/authenticate/begin', { method:'POST',
+        headers:{'content-type':'application/json'}, body: JSON.stringify({ user_id:userId }) });
+      if (begin.status === 400) {  // no passkey yet -> enrol one first
+        const regOpts = await (await fetch('/v1/webauthn/register/begin', { method:'POST',
+          headers:{'content-type':'application/json'}, body: JSON.stringify({ user_id:userId }) })).json();
+        const regResp = await startRegistration({ optionsJSON: regOpts });
+        await fetch('/v1/webauthn/register/complete', { method:'POST',
+          headers:{'content-type':'application/json'},
+          body: JSON.stringify({ user_id:userId, credential: regResp }) });
+        begin = await fetch('/v1/webauthn/authenticate/begin', { method:'POST',
+          headers:{'content-type':'application/json'}, body: JSON.stringify({ user_id:userId }) });
+      }
+      const authOpts = await begin.json();
+      const authResp = await startAuthentication({ optionsJSON: authOpts });
+      const done = await (await fetch('/v1/webauthn/authenticate/complete', { method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({ user_id:userId, credential: authResp, event }) })).json();
+      return done.verified === true;
+    }
+
+    document.getElementById('signin').addEventListener('click', async () => {
+      const userId = document.getElementById('user').value.trim();
+      if (!userId) { show('s-deny','Please enter your Customer ID.'); return; }
+      const btn = document.getElementById('signin'); btn.disabled = true; btn.textContent = 'Assessing risk…';
+      try {
+        const { decision, event } = await evaluate(userId);
+        if (decision.action === 'allow' || decision.action === 'monitor') {
+          show('s-allow', decisionHtml(decision, grantHtml.replace('__UI__', UI_URL)));
+        } else if (decision.action === 'step_up') {
+          show('s-step', decisionHtml(decision, '<p class="chip">Elevated risk — verifying with your passkey…</p>'));
+          const ok = await stepUp(userId, event);
+          show(ok?'s-allow':'s-deny', decisionHtml(decision,
+            ok ? '<p><b>✅ Passkey verified — access granted.</b></p>'+grantHtml.replace('__UI__', UI_URL)
+               : '<p><b>❌ Step-up failed — access denied.</b></p>'));
+        } else {
+          show('s-deny', decisionHtml(decision, '<p><b>⛔ Access blocked pending review.</b></p>'));
+        }
+      } catch (e) {
+        show('s-deny', 'Error: '+e.message);
+      } finally { btn.disabled = false; btn.textContent = 'Sign in securely'; }
+    });
+  </script>
+</body>
+</html>

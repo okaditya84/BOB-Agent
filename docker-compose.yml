@@ -9,6 +9,10 @@ services:
     environment:
       IDTRUST_DB_PATH: /data/identity_trust.db
       GEOIP_MMDB_PATH: /data/GeoLite2-City.mmdb
+      # WebAuthn origin must match where the /login page is served from.
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_ORIGIN: http://localhost:8001
+      BOBAI_UI_URL: http://localhost:3080
     volumes:
       - ./data:/data
     ports:

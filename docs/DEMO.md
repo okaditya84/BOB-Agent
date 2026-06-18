@@ -9,8 +9,18 @@ statement: **Identity Trust, Protection & Safety**.
 
 ---
 
-## Flow 1 — Risk-based step-up (the headline)
-Show that normal access is frictionless but anomalous access is challenged.
+## Flow 1 — Risk-based step-up on the real login screen (the headline)
+Open **http://localhost:8001/login** (BOBAI Secure Access). Enter a Customer ID and
+sign in. The page captures a device fingerprint + (consented) browser geolocation,
+calls the risk engine, and:
+- **Low risk** → shows the score + "Continue to BOBAI" (frictionless).
+- **Elevated risk** → triggers a **real passkey / WebAuthn** challenge (enrols on first
+  use), then grants access only after verification.
+- **Critical** → blocks pending review.
+To force a step-up: sign in once (trusts this device/location), then use the API below
+to simulate an impossible-travel event for the same user before retrying.
+
+### Under the hood (or to script it):
 
 ```bash
 # Normal login from Mumbai — silent (allow)

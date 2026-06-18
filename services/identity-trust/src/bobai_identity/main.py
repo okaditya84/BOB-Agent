@@ -156,6 +156,19 @@ def dashboard() -> str:
     return (Path(__file__).parent / "dashboard.html").read_text(encoding="utf-8")
 
 
+@app.get("/login", response_class=HTMLResponse)
+def login_page() -> str:
+    return (Path(__file__).parent / "login.html").read_text(encoding="utf-8")
+
+
+@app.get("/v1/config")
+def public_config() -> dict[str, Any]:
+    """Non-secret config the login page needs (where to hand off after access)."""
+    import os
+
+    return {"bobai_ui_url": os.getenv("BOBAI_UI_URL", "http://localhost:3080")}
+
+
 @app.get("/v1/users/{user_id}/profile")
 def user_profile(user_id: str) -> dict[str, Any]:
     p = app.state.store.get_profile(user_id)
