@@ -35,3 +35,17 @@ services:
     ports:
       - "8003:8003"
     restart: unless-stopped
+
+  mcp:
+    build: ./services/mcp
+    environment:
+      BOBAI_IDENTITY_URL: http://identity-trust:8001
+      BOBAI_KYC_URL: http://kyc:8002
+      BOBAI_ASSISTANT_URL: http://assistant:8003
+    ports:
+      - "8004:8004"
+    depends_on:
+      - identity-trust
+      - kyc
+      - assistant
+    restart: unless-stopped

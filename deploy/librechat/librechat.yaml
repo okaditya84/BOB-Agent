@@ -114,5 +114,15 @@ actions:
     - '127.0.0.1:8002'
     - '127.0.0.1:8003'
 
-# MCP servers (Identity Trust / KYC / Assistant) will be added here once their
-# FastMCP wrappers land — see services/* and the project roadmap.
+# BOBAI MCP server — one server exposing document-guidance, KYC and identity-risk
+# tools. Admins attach this in the UI; every agent then gains these capabilities.
+mcpServers:
+  bobai:
+    type: streamable-http
+    url: http://host.docker.internal:8004/mcp
+    timeout: 60000
+
+# Allow LibreChat to reach the MCP server on the Docker host.
+mcpSettings:
+  allowedAddresses:
+    - 'host.docker.internal:8004'
