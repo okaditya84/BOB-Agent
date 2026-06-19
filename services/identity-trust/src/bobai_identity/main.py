@@ -208,10 +208,21 @@ def signup(body: SignupRequest) -> dict[str, Any]:
 
 @app.get("/v1/config")
 def public_config() -> dict[str, Any]:
-    """Non-secret config the login page needs (where to hand off after access)."""
+    """Non-secret config the pages need (URLs of the other BOBAI surfaces)."""
     import os
 
-    return {"bobai_ui_url": os.getenv("BOBAI_UI_URL", "http://localhost:3080")}
+    return {
+        "bobai_ui_url": os.getenv("BOBAI_UI_URL", "http://localhost:3080"),
+        "ekyc_url": os.getenv("BOBAI_EKYC_URL", "http://localhost:8002/ekyc"),
+        "dashboard_url": "/dashboard",
+        "login_url": "/login",
+        "signup_url": "/signup",
+    }
+
+
+@app.get("/", response_class=HTMLResponse)
+def portal() -> str:
+    return (Path(__file__).parent / "portal.html").read_text(encoding="utf-8")
 
 
 @app.get("/v1/users/{user_id}/profile")

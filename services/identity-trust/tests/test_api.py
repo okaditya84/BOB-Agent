@@ -94,6 +94,18 @@ def test_public_config(client):
     assert "bobai_ui_url" in r.json()
 
 
+def test_portal_served(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "BOBAI" in r.text
+    assert "For Customers" in r.text
+
+
+def test_config_has_all_surface_urls(client):
+    c = client.get("/v1/config").json()
+    assert {"bobai_ui_url", "ekyc_url", "dashboard_url", "login_url", "signup_url"} <= set(c)
+
+
 def test_signup_page_served(client):
     r = client.get("/signup")
     assert r.status_code == 200

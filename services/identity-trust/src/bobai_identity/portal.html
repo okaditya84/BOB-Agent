@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BOBAI — Secure Banking Assistant</title>
+  <style>
+    :root { --bob:#F15A22; --bob-dark:#C8431A; --ink:#1f2430; --muted:#6b7280; --bg:#f5f6f8; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:var(--bg); color:var(--ink); }
+    .nav { background:var(--bob); color:#fff; padding:14px 28px; display:flex; align-items:center; gap:12px; }
+    .nav .dot { width:34px; height:34px; border-radius:9px; background:#fff; color:var(--bob);
+                font-weight:800; display:flex; align-items:center; justify-content:center; }
+    .nav h1 { font-size:18px; margin:0; font-weight:700; }
+    .nav .links { margin-left:auto; display:flex; gap:18px; }
+    .nav .links a { color:#fff; text-decoration:none; font-size:14px; opacity:.92; }
+    .nav .links a:hover { opacity:1; text-decoration:underline; }
+    .hero { padding:42px 28px 10px; max-width:1100px; margin:0 auto; }
+    .hero h2 { font-size:30px; margin:0 0 8px; }
+    .hero p { color:var(--muted); font-size:16px; margin:0; max-width:720px; }
+    .wrap { max-width:1100px; margin:24px auto 50px; padding:0 28px; }
+    .section-title { font-size:13px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted);
+                     margin:26px 0 12px; font-weight:700; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; }
+    .card { background:#fff; border-radius:14px; padding:22px; box-shadow:0 2px 10px rgba(0,0,0,.06);
+            display:flex; flex-direction:column; border:1px solid #eef0f3; }
+    .card .ico { font-size:26px; }
+    .card h3 { margin:10px 0 6px; font-size:17px; }
+    .card p { color:var(--muted); font-size:13px; margin:0 0 16px; flex:1; }
+    .card a { align-self:flex-start; background:var(--bob); color:#fff; padding:9px 16px; border-radius:8px;
+              text-decoration:none; font-weight:700; font-size:14px; }
+    .card a:hover { background:var(--bob-dark); }
+    .card a.sec { background:#eef0f3; color:var(--ink); }
+    .foot { text-align:center; color:var(--muted); font-size:12px; padding:20px; }
+    .badge { display:inline-block; background:#fff4e6; color:var(--bob-dark); font-size:11px;
+             font-weight:700; padding:3px 9px; border-radius:99px; margin-left:8px; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div class="dot">B</div>
+    <h1>BOBAI</h1>
+    <div class="links">
+      <a href="/">Home</a>
+      <a id="navChat" href="#">Assistant</a>
+      <a id="navEkyc" href="#">eKYC</a>
+      <a href="/login">Sign in</a>
+      <a href="/dashboard">Admin</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h2>Bank of Baroda — Secure, Intelligent Banking Assistant</h2>
+    <p>A privacy-first platform that continuously validates identity, answers customer
+       questions in any language, and verifies KYC — adding security friction only when
+       risk is real.</p>
+  </div>
+
+  <div class="wrap">
+    <div class="section-title">For Customers</div>
+    <div class="grid">
+      <div class="card">
+        <div class="ico">🔐</div><h3>Secure Sign-in</h3>
+        <p>Risk-based login with step-up verification only when something looks unusual.</p>
+        <a href="/login">Sign in</a>
+      </div>
+      <div class="card">
+        <div class="ico">🆕</div><h3>Open an Account</h3>
+        <p>Create your account with real-time password strength and sign-up risk checks.</p>
+        <a href="/signup">Create account</a>
+      </div>
+      <div class="card">
+        <div class="ico">💬</div><h3>Chat with BOBAI</h3>
+        <p>Ask about documents, accounts, deposits and loans — in your language, with voice.</p>
+        <a id="cardChat" href="#">Open assistant</a>
+      </div>
+      <div class="card">
+        <div class="ico">🪪</div><h3>Live eKYC</h3>
+        <p>Verify your identity with a live selfie + ID document (AI document check + face match).</p>
+        <a id="cardEkyc" href="#">Start eKYC</a>
+      </div>
+    </div>
+
+    <div class="section-title">For Bank Staff &amp; Administrators</div>
+    <div class="grid">
+      <div class="card">
+        <div class="ico">📊</div><h3>Identity &amp; Access Analytics</h3>
+        <p>Live risk dashboard: who accessed what, from where, what risk fired, and why.</p>
+        <a href="/dashboard">Open dashboard</a>
+      </div>
+      <div class="card">
+        <div class="ico">🤖</div><h3>Admin Console <span class="badge">ADMIN</span></h3>
+        <p>Build &amp; share agents, attach MCP tools, manage prompts and groups.</p>
+        <a id="cardAdmin" class="sec" href="#">Open console</a>
+      </div>
+      <div class="card">
+        <div class="ico">🛡️</div><h3>Audit &amp; Integrity</h3>
+        <p>Verify the tamper-evident, hash-chained decision audit log.</p>
+        <a class="sec" href="/v1/audit/verify">Verify audit chain</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Bank of Baroda — BOBAI · privacy-first · risk-based · explainable</div>
+
+  <script>
+    fetch('/v1/config').then(r=>r.json()).then(c=>{
+      const chat=c.bobai_ui_url, ekyc=c.ekyc_url;
+      for (const id of ['navChat','cardChat','cardAdmin']) document.getElementById(id).href = chat;
+      for (const id of ['navEkyc','cardEkyc']) document.getElementById(id).href = ekyc;
+    }).catch(()=>{});
+  </script>
+</body>
+</html>

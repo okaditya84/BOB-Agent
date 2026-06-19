@@ -33,7 +33,9 @@
   </style>
 </head>
 <body>
-  <header><div class="dot">B</div><h1>BOBAI · Live eKYC Verification</h1></header>
+  <header><div class="dot">B</div><h1>BOBAI · Live eKYC Verification</h1>
+    <a id="navHome" href="#" style="margin-left:auto;color:#fff;text-decoration:none;font-size:14px;opacity:.92">← BOBAI Home</a>
+  </header>
   <div class="wrap">
     <div class="steps">
       <div class="panel">
@@ -72,6 +74,8 @@
   <script>
     const $ = id => document.getElementById(id);
     let stream=null, selfieBlob=null, docBlob=null;
+    // Derive the portal host dynamically (identity service is on :8001).
+    $('navHome').href = `${location.protocol}//${location.hostname}:8001/`;
 
     $('start').onclick = async () => {
       try {

@@ -13,6 +13,7 @@ services:
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_ORIGIN: http://localhost:8001
       BOBAI_UI_URL: http://localhost:3080
+      BOBAI_EKYC_URL: http://localhost:8002/ekyc
     volumes:
       - ./data:/data
     ports:
