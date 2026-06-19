@@ -6,7 +6,9 @@
   <title>BOBAI — Identity Trust Analytics</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Charts are rendered as inline CSS bars (no external chart library) so they
+       work even when CDN scripts are blocked by the browser. -->
+  <noscript></noscript>
   <style>
     :root { --bob:#F15A22; --bob-dark:#C8431A; --ink:#1f2430; --muted:#6b7280; --bg:#f5f6f8; --card:#fff; }
     * { box-sizing:border-box; }
@@ -31,6 +33,12 @@
     .b-low{background:#16a34a;} .b-medium{background:#d97706;} .b-high{background:#ea580c;} .b-critical{background:#dc2626;}
     .reasons li { font-size:13px; margin-bottom:6px; color:#374151; }
     .muted { color:var(--muted); font-size:12px; }
+    .barchart { display:flex; flex-direction:column; gap:8px; }
+    .bar-row { display:flex; align-items:center; gap:10px; font-size:13px; }
+    .bar-label { width:90px; color:#374151; text-transform:capitalize; }
+    .bar-track { flex:1; background:#eef0f3; border-radius:6px; height:18px; overflow:hidden; }
+    .bar-fill { height:100%; border-radius:6px; transition:width .4s; }
+    .bar-val { width:34px; text-align:right; font-weight:700; }
   </style>
 </head>
 <body>
@@ -48,8 +56,8 @@
     </div>
     <div class="grid2">
       <div class="panel"><h2>Access locations (risk-coloured)</h2><div id="map"></div></div>
-      <div class="panel"><h2>Actions taken</h2><canvas id="actionChart" height="150"></canvas>
-        <h2 style="margin-top:18px">Risk bands</h2><canvas id="bandChart" height="120"></canvas></div>
+      <div class="panel"><h2>Actions taken</h2><div id="actionChart" class="barchart"></div>
+        <h2 style="margin-top:18px">Risk bands</h2><div id="bandChart" class="barchart"></div></div>
     </div>
     <div class="grid2">
       <div class="panel"><h2>Recent access events</h2>
@@ -64,8 +72,13 @@
   </div>
   <script>
     const BAND = { low:'#16a34a', medium:'#d97706', high:'#ea580c', critical:'#dc2626' };
-    let map, markers, actionChart, bandChart;
+    let map, markers;
     function initMap(){
+      if (typeof L === 'undefined') {  // Leaflet blocked — degrade gracefully
+        document.getElementById('map').innerHTML =
+          '<p class="muted" style="padding:16px">Map library unavailable (blocked). Locations are still listed in the events table below.</p>';
+        return;
+      }
       map = L.map('map').setView([20.5937, 78.9629], 4);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         { attribution:'© OpenStreetMap', maxZoom:18 }).addTo(map);
@@ -82,8 +95,8 @@
       document.getElementById('deny').textContent = summary.deny_count;
       document.getElementById('updated').textContent = 'updated '+new Date().toLocaleTimeString();
 
-      markers.clearLayers();
-      access.filter(a=>a.lat!=null && a.lon!=null).forEach(a=>{
+      if (markers) markers.clearLayers();
+      if (markers) access.filter(a=>a.lat!=null && a.lon!=null).forEach(a=>{
         L.circleMarker([a.lat,a.lon], { radius:6, color:BAND[a.band]||'#666', fillColor:BAND[a.band]||'#666', fillOpacity:.7, weight:1 })
           .bindPopup(`<b>${a.user_id}</b><br>${a.event_type} · ${a.action}<br>risk ${a.risk_score} (${a.band})<br>${a.city||''} ${a.country||''}`)
           .addTo(markers);
@@ -104,17 +117,19 @@
       const countries=document.getElementById('countries'); countries.innerHTML='';
       Object.entries(summary.by_country).forEach(([c,n])=>{ const li=document.createElement('li'); li.textContent=`${c}: ${n}`; countries.appendChild(li); });
 
-      drawChart('actionChart', summary.by_action, 'action', a => BAND[{allow:'low',monitor:'medium',step_up:'high',deny:'critical'}[a]] || '#888');
-      drawChart('bandChart', summary.by_band, 'band', b => BAND[b]||'#888');
+      drawBars('actionChart', summary.by_action, a => BAND[{allow:'low',monitor:'medium',step_up:'high',deny:'critical'}[a]] || '#888');
+      drawBars('bandChart', summary.by_band, b => BAND[b]||'#888');
     }
-    function drawChart(id, obj, kind, colorFn){
-      const labels=Object.keys(obj), data=Object.values(obj);
-      const ctx=document.getElementById(id);
-      const ref = id==='actionChart' ? 'actionChart' : 'bandChart';
-      if(window[ref]) window[ref].destroy();
-      window[ref] = new Chart(ctx, { type:'bar',
-        data:{ labels, datasets:[{ data, backgroundColor:labels.map(colorFn) }] },
-        options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}} } });
+    function drawBars(id, obj, colorFn){
+      const el = document.getElementById(id);
+      const entries = Object.entries(obj);
+      const max = Math.max(1, ...entries.map(([,v])=>v));
+      el.innerHTML = entries.map(([label,val]) =>
+        `<div class="bar-row">
+           <span class="bar-label">${label.replace('_',' ')}</span>
+           <span class="bar-track"><span class="bar-fill" style="width:${(val/max*100).toFixed(0)}%;background:${colorFn(label)}"></span></span>
+           <span class="bar-val">${val}</span>
+         </div>`).join('') || '<p class="muted">No data yet — run <code>make seed</code>.</p>';
     }
     initMap(); load(); setInterval(load, 10000);
   </script>
