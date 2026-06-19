@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     yunet_path: str = _default_model("face_detection_yunet_2023mar.onnx")
     sface_path: str = _default_model("face_recognition_sface_2021dec.onnx")
 
+    # Vision LLM (Groq) for document-type classification. Key read from GROQ_API_KEY.
+    vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+
 
 @lru_cache
 def get_settings() -> Settings:

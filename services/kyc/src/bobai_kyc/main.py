@@ -18,6 +18,7 @@ from .schemas import (
     CheckRequest,
     CheckResult,
     ClaimedFields,
+    DocumentClassification,
     DocumentFraudReport,
     DocumentType,
     EkycVerifyResult,
@@ -26,6 +27,7 @@ from .schemas import (
     Product,
     RequirementSet,
 )
+from .vision import DocumentVisionClassifier
 
 
 def _load_face_matcher(settings):
@@ -49,6 +51,7 @@ async def lifespan(app: FastAPI):
     app.state.kb = KnowledgeBase.from_file(settings.kb_path)
     app.state.ocr = TesseractEngine()
     app.state.face = _load_face_matcher(settings)
+    app.state.vision = DocumentVisionClassifier(settings.vision_model, settings.groq_base_url)
     yield
 
 
@@ -164,17 +167,45 @@ async def liveness_check(selfie: UploadFile = File(...)) -> LivenessResult:
 
 @app.post("/v1/kyc/ekyc/verify", response_model=EkycVerifyResult)
 async def ekyc_verify(
-    selfie: UploadFile = File(...), document: UploadFile = File(...)
+    selfie: UploadFile = File(...),
+    document: UploadFile = File(...),
+    expected_type: str = Form("aadhaar"),
 ) -> EkycVerifyResult:
-    """Full eKYC: passive liveness on the live selfie + face match vs the ID photo."""
+    """Full eKYC: (1) vision-LLM verifies the document IS a genuine ID of the expected
+    type, (2) passive liveness on the live selfie, (3) face match vs the ID photo."""
     matcher = app.state.face
     if matcher is None:
         raise HTTPException(status_code=503, detail="Face models not available.")
-    selfie_img = matcher.decode(await selfie.read())
-    doc_img = matcher.decode(await document.read())
+    selfie_bytes = await selfie.read()
+    doc_bytes = await document.read()
+    selfie_img = matcher.decode(selfie_bytes)
+    doc_img = matcher.decode(doc_bytes)
     if selfie_img is None or doc_img is None:
         raise HTTPException(status_code=400, detail="Could not decode one or both images.")
 
+    # 1) Document-type verification (Groq vision LLM).
+    vc = app.state.vision.classify(doc_bytes, mime=document.content_type or "image/jpeg")
+    doc_res = DocumentClassification(
+        available=vc.get("available", False),
+        is_identity_document=vc.get("is_identity_document"),
+        document_type=vc.get("document_type"),
+        confidence=vc.get("confidence"),
+        extracted=vc.get("extracted", {}) or {},
+        reason=vc.get("reason", ""),
+    )
+    # Document gate: only enforced when the classifier is available and succeeded.
+    doc_ok = True
+    doc_problem = None
+    if doc_res.available and vc.get("ok"):
+        if not doc_res.is_identity_document:
+            doc_ok, doc_problem = False, "Uploaded file is not a valid identity document."
+        elif expected_type and expected_type != "any" and doc_res.document_type != expected_type:
+            doc_ok, doc_problem = False, (
+                f"Expected a {expected_type} but the document looks like a "
+                f"{doc_res.document_type or 'different document'}."
+            )
+
+    # 2) Liveness + 3) face match.
     live = matcher.liveness(selfie_img)
     m = matcher.match(selfie_img, doc_img)
     live_res = LivenessResult(live=live["live"], score=live["score"], reason=live["reason"],
@@ -183,16 +214,37 @@ async def ekyc_verify(
         match=m["match"], cosine=m["cosine"], faces_detected=m["faces_detected"],
         threshold=matcher.cosine_threshold, note=m["note"], disclaimer=_face_disclaimer(),
     )
-    verified = bool(live_res.live and match_res.match)
-    if verified:
-        summary = "eKYC verified: live selfie matches the document photo."
+
+    verified = bool(doc_ok and live_res.live and match_res.match)
+    if not doc_ok:
+        summary = doc_problem
     elif not live_res.live:
         summary = f"Liveness failed: {live_res.reason}"
-    else:
+    elif not match_res.match:
         summary = "Face does not match the document photo."
+    else:
+        dt = doc_res.document_type or "ID"
+        summary = f"eKYC verified: genuine {dt} and live selfie matches the document photo."
     return EkycVerifyResult(
-        verified=verified, liveness=live_res, face_match=match_res,
+        verified=verified, document=doc_res, liveness=live_res, face_match=match_res,
         summary=summary, disclaimer=_face_disclaimer(),
+    )
+
+
+@app.post("/v1/kyc/document/classify", response_model=DocumentClassification)
+async def classify_document(document: UploadFile = File(...)) -> DocumentClassification:
+    """Vision-LLM document-type classification (is this a genuine ID, and which type)."""
+    data = await document.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty upload.")
+    vc = app.state.vision.classify(data, mime=document.content_type or "image/jpeg")
+    return DocumentClassification(
+        available=vc.get("available", False),
+        is_identity_document=vc.get("is_identity_document"),
+        document_type=vc.get("document_type"),
+        confidence=vc.get("confidence"),
+        extracted=vc.get("extracted", {}) or {},
+        reason=vc.get("reason", ""),
     )
 
 

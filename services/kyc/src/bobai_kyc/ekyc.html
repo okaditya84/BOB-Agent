@@ -48,10 +48,19 @@
         <p class="muted">Look at the camera in good light. A live capture (with passive liveness) is matched against your ID photo on-device-friendly, privacy-first.</p>
       </div>
       <div class="panel">
-        <h2>2 · Upload your ID (Aadhaar / Passport / etc.)</h2>
+        <h2>2 · Upload your ID</h2>
         <img id="docPreview" alt="document preview" />
         <input type="file" id="docFile" accept="image/*" />
-        <p class="muted">We match the photo on the ID against your live selfie. Adult re-verification scope.</p>
+        <label style="display:block;margin-top:10px;font-size:12px;color:var(--muted)">Expected document type</label>
+        <select id="expectedType" style="width:100%;padding:9px;border-radius:9px;border:1px solid #d7dae0;margin-top:4px">
+          <option value="aadhaar">Aadhaar card</option>
+          <option value="pan">PAN card</option>
+          <option value="passport">Passport</option>
+          <option value="voter_id">Voter ID</option>
+          <option value="driving_licence">Driving licence</option>
+          <option value="any">Any government ID</option>
+        </select>
+        <p class="muted">An AI vision check confirms it's a genuine ID of the chosen type, then matches the ID photo against your live selfie. Adult re-verification scope.</p>
       </div>
     </div>
     <div class="verify">
@@ -95,14 +104,21 @@
       const fd = new FormData();
       fd.append('selfie', selfieBlob, 'selfie.jpg');
       fd.append('document', docBlob, 'document.jpg');
+      fd.append('expected_type', $('expectedType').value);
       try {
         const r = await fetch('/v1/kyc/ekyc/verify', { method:'POST', body:fd });
         const d = await r.json();
         if (!r.ok) throw new Error(d.detail || 'verify failed');
         const res = $('result'); res.className = 'result show ' + (d.verified ? 'ok' : 'bad');
+        const doc = d.document || {};
+        const docLine = doc.available
+          ? `<div class="row"><span>Document type (AI vision)</span><b>${doc.is_identity_document ? (doc.document_type||'ID') : 'NOT an ID'}${doc.confidence!=null?' ('+Math.round(doc.confidence*100)+'%)':''}</b></div>
+             <div class="row muted"><span>vision detail</span><span>${doc.reason||''}</span></div>`
+          : `<div class="row muted"><span>Document type (AI vision)</span><span>unavailable (no GROQ key)</span></div>`;
         res.innerHTML =
           `<div class="big">${d.verified ? '✅ Identity verified' : '❌ Not verified'}</div>
            <div class="muted">${d.summary}</div>
+           ${docLine}
            <div class="row"><span>Liveness</span><b>${d.liveness.live ? 'pass' : 'fail'} (${d.liveness.score})</b></div>
            <div class="row muted"><span>liveness detail</span><span>${d.liveness.reason}</span></div>
            <div class="row"><span>Face match</span><b>${d.face_match.match ? 'match' : 'no match'}${d.face_match.cosine!=null?' (cos '+d.face_match.cosine+')':''}</b></div>

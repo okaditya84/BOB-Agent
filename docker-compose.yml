@@ -21,6 +21,7 @@ services:
 
   kyc:
     build: ./services/kyc
+    env_file: .env            # provides GROQ_API_KEY for the vision document classifier
     environment:
       BOBAI_KYC_KB_PATH: /data/bob_documents_data.json
       BOBAI_KYC_YUNET_PATH: /data/models/face_detection_yunet_2023mar.onnx

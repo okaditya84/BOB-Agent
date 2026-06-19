@@ -128,8 +128,18 @@ class LivenessResult(BaseModel):
     metrics: dict = Field(default_factory=dict)
 
 
+class DocumentClassification(BaseModel):
+    available: bool
+    is_identity_document: bool | None = None
+    document_type: str | None = None
+    confidence: float | None = None
+    extracted: dict = Field(default_factory=dict)
+    reason: str = ""
+
+
 class EkycVerifyResult(BaseModel):
     verified: bool
+    document: DocumentClassification
     liveness: LivenessResult
     face_match: FaceMatchResult
     summary: str
