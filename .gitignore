@@ -37,3 +37,7 @@ platform/librechat-admin-panel/
 
 # Face-match ONNX models (large binaries; download separately)
 data/models/
+
+# Personal screenshots / photos
+WhatsApp Image*.jpeg
+*.jpeg
