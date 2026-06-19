@@ -121,6 +121,21 @@ class FaceMatchResult(BaseModel):
     disclaimer: str
 
 
+class LivenessResult(BaseModel):
+    live: bool
+    score: float
+    reason: str
+    metrics: dict = Field(default_factory=dict)
+
+
+class EkycVerifyResult(BaseModel):
+    verified: bool
+    liveness: LivenessResult
+    face_match: FaceMatchResult
+    summary: str
+    disclaimer: str
+
+
 class DocumentFraudReport(BaseModel):
     document_type: DocumentType
     ela: ELAResult

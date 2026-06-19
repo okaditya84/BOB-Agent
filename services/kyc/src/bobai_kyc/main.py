@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from .config import get_settings
 from .fraud import analyze_document
@@ -18,7 +20,9 @@ from .schemas import (
     ClaimedFields,
     DocumentFraudReport,
     DocumentType,
+    EkycVerifyResult,
     FaceMatchResult,
+    LivenessResult,
     Product,
     RequirementSet,
 )
@@ -135,3 +139,63 @@ async def face_match(
         disclaimer="Adult re-verification only; not bank-grade for child-to-adult age gaps. "
         "Liveness/anti-spoofing and provenance (DigiLocker/Aadhaar Secure-QR) recommended for production.",
     )
+
+
+def _face_disclaimer() -> str:
+    return (
+        "Adult re-verification only. Passive liveness is a screen/print triage signal, "
+        "not a certified PAD; production should add certified liveness + provenance "
+        "(DigiLocker / Aadhaar Secure-QR)."
+    )
+
+
+@app.post("/v1/kyc/liveness", response_model=LivenessResult)
+async def liveness_check(selfie: UploadFile = File(...)) -> LivenessResult:
+    matcher = app.state.face
+    if matcher is None:
+        raise HTTPException(status_code=503, detail="Face models not available.")
+    img = matcher.decode(await selfie.read())
+    if img is None:
+        raise HTTPException(status_code=400, detail="Could not decode image.")
+    r = matcher.liveness(img)
+    return LivenessResult(live=r["live"], score=r["score"], reason=r["reason"],
+                          metrics=r.get("metrics", {}))
+
+
+@app.post("/v1/kyc/ekyc/verify", response_model=EkycVerifyResult)
+async def ekyc_verify(
+    selfie: UploadFile = File(...), document: UploadFile = File(...)
+) -> EkycVerifyResult:
+    """Full eKYC: passive liveness on the live selfie + face match vs the ID photo."""
+    matcher = app.state.face
+    if matcher is None:
+        raise HTTPException(status_code=503, detail="Face models not available.")
+    selfie_img = matcher.decode(await selfie.read())
+    doc_img = matcher.decode(await document.read())
+    if selfie_img is None or doc_img is None:
+        raise HTTPException(status_code=400, detail="Could not decode one or both images.")
+
+    live = matcher.liveness(selfie_img)
+    m = matcher.match(selfie_img, doc_img)
+    live_res = LivenessResult(live=live["live"], score=live["score"], reason=live["reason"],
+                              metrics=live.get("metrics", {}))
+    match_res = FaceMatchResult(
+        match=m["match"], cosine=m["cosine"], faces_detected=m["faces_detected"],
+        threshold=matcher.cosine_threshold, note=m["note"], disclaimer=_face_disclaimer(),
+    )
+    verified = bool(live_res.live and match_res.match)
+    if verified:
+        summary = "eKYC verified: live selfie matches the document photo."
+    elif not live_res.live:
+        summary = f"Liveness failed: {live_res.reason}"
+    else:
+        summary = "Face does not match the document photo."
+    return EkycVerifyResult(
+        verified=verified, liveness=live_res, face_match=match_res,
+        summary=summary, disclaimer=_face_disclaimer(),
+    )
+
+
+@app.get("/ekyc", response_class=HTMLResponse)
+def ekyc_page() -> str:
+    return (Path(__file__).parent / "ekyc.html").read_text(encoding="utf-8")

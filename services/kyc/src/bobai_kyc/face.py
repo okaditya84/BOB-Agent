@@ -47,6 +47,51 @@ class FaceMatcher:
         aligned = self.recognizer.alignCrop(img, face)
         return self.recognizer.feature(aligned)
 
+    def liveness(self, img: np.ndarray) -> dict:
+        """Passive single-frame liveness heuristic (commercially-clean, OpenCV only).
+
+        Combines: a face is present and adequately sized; the face region is in
+        sharp focus (Laplacian variance — printed/again-photographed IDs are softer);
+        and colour variety (greyscale photocopies / heavy moire score low). This is a
+        screen/print *triage* signal, NOT a certified presentation-attack detector;
+        production should use a certified PAD (see docs/PITCH.md).
+        """
+        face = self._largest_face(img)
+        if face is None:
+            return {"live": False, "score": 0.0, "reason": "No face detected."}
+
+        x, y, w, h = (int(v) for v in face[:4])
+        H, W = img.shape[:2]
+        x, y = max(0, x), max(0, y)
+        crop = img[y:y + h, x:x + w]
+        if crop.size == 0:
+            return {"live": False, "score": 0.0, "reason": "Face region empty."}
+
+        face_ratio = (w * h) / float(W * H)
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        colour_std = float(crop.reshape(-1, 3).std(axis=0).mean())
+
+        size_ok = face_ratio >= 0.04
+        sharp_ok = sharpness >= 40.0
+        colour_ok = colour_std >= 12.0
+        passed = sum([size_ok, sharp_ok, colour_ok])
+        score = round(passed / 3.0, 3)
+        reasons = []
+        if not size_ok:
+            reasons.append("face too small/far")
+        if not sharp_ok:
+            reasons.append("image too soft (possible re-photographed ID/screen)")
+        if not colour_ok:
+            reasons.append("low colour variety (possible photocopy)")
+        return {
+            "live": passed >= 2,
+            "score": score,
+            "reason": "Passive checks passed." if passed >= 2 else "; ".join(reasons),
+            "metrics": {"face_ratio": round(face_ratio, 4), "sharpness": round(sharpness, 1),
+                        "colour_std": round(colour_std, 1)},
+        }
+
     def match(self, selfie: np.ndarray, document: np.ndarray) -> dict:
         f_selfie = self.embed(selfie)
         f_doc = self.embed(document)

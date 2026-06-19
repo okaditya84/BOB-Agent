@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BOBAI — Live eKYC</title>
+  <style>
+    :root { --bob:#F15A22; --bob-dark:#C8431A; --ink:#1f2430; --muted:#6b7280; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:linear-gradient(135deg,#fff,#fde8df); color:var(--ink); min-height:100vh; }
+    header { background:var(--bob); color:#fff; padding:16px 24px; display:flex; align-items:center; gap:10px; }
+    header .dot { width:32px; height:32px; border-radius:8px; background:#fff; color:var(--bob);
+                  font-weight:800; display:flex; align-items:center; justify-content:center; }
+    header h1 { font-size:18px; margin:0; }
+    .wrap { max-width:880px; margin:24px auto; padding:0 20px; }
+    .steps { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    .panel { background:#fff; border-radius:14px; padding:18px; box-shadow:0 4px 18px rgba(0,0,0,.08); }
+    .panel h2 { font-size:14px; margin:0 0 12px; }
+    video, #shot, #docPreview { width:100%; border-radius:10px; background:#111; aspect-ratio:4/3; object-fit:cover; }
+    button { padding:10px 14px; border:0; border-radius:9px; background:var(--bob); color:#fff;
+             font-weight:700; cursor:pointer; margin-top:10px; }
+    button:hover { background:var(--bob-dark); } button:disabled { opacity:.5; cursor:not-allowed; }
+    button.ghost { background:#eef0f3; color:var(--ink); }
+    input[type=file] { margin-top:10px; font-size:13px; }
+    .verify { margin-top:18px; text-align:center; }
+    .result { margin-top:16px; padding:16px; border-radius:12px; display:none; }
+    .result.show { display:block; }
+    .ok { background:#e8f6ee; border:1px solid #b7e3c6; } .bad { background:#fdecec; border:1px solid #f5c2c2; }
+    .row { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; border-bottom:1px solid #00000010; }
+    .muted { color:var(--muted); font-size:12px; }
+    .big { font-size:18px; font-weight:800; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+  <header><div class="dot">B</div><h1>BOBAI · Live eKYC Verification</h1></header>
+  <div class="wrap">
+    <div class="steps">
+      <div class="panel">
+        <h2>1 · Live selfie</h2>
+        <video id="cam" autoplay playsinline muted></video>
+        <canvas id="shot" style="display:none"></canvas>
+        <div>
+          <button id="start">Start camera</button>
+          <button id="capture" class="ghost" disabled>Capture</button>
+          <button id="retake" class="ghost" style="display:none">Retake</button>
+        </div>
+        <p class="muted">Look at the camera in good light. A live capture (with passive liveness) is matched against your ID photo on-device-friendly, privacy-first.</p>
+      </div>
+      <div class="panel">
+        <h2>2 · Upload your ID (Aadhaar / Passport / etc.)</h2>
+        <img id="docPreview" alt="document preview" />
+        <input type="file" id="docFile" accept="image/*" />
+        <p class="muted">We match the photo on the ID against your live selfie. Adult re-verification scope.</p>
+      </div>
+    </div>
+    <div class="verify">
+      <button id="verify" disabled>Verify identity</button>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let stream=null, selfieBlob=null, docBlob=null;
+
+    $('start').onclick = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' } });
+        $('cam').srcObject = stream; $('capture').disabled = false; $('start').disabled = true;
+      } catch(e){ alert('Camera access denied or unavailable: '+e.message); }
+    };
+    $('capture').onclick = () => {
+      const v=$('cam'), c=$('shot');
+      c.width=v.videoWidth; c.height=v.videoHeight;
+      c.getContext('2d').drawImage(v,0,0);
+      c.toBlob(b => { selfieBlob=b; updateVerify(); }, 'image/jpeg', 0.92);
+      v.style.display='none'; c.style.display='block';
+      $('capture').style.display='none'; $('retake').style.display='inline-block';
+    };
+    $('retake').onclick = () => {
+      $('shot').style.display='none'; $('cam').style.display='block';
+      $('capture').style.display='inline-block'; $('retake').style.display='none';
+      selfieBlob=null; updateVerify();
+    };
+    $('docFile').onchange = e => {
+      docBlob = e.target.files[0] || null;
+      if (docBlob) $('docPreview').src = URL.createObjectURL(docBlob);
+      updateVerify();
+    };
+    function updateVerify(){ $('verify').disabled = !(selfieBlob && docBlob); }
+
+    $('verify').onclick = async () => {
+      $('verify').disabled = true; $('verify').textContent = 'Verifying…';
+      const fd = new FormData();
+      fd.append('selfie', selfieBlob, 'selfie.jpg');
+      fd.append('document', docBlob, 'document.jpg');
+      try {
+        const r = await fetch('/v1/kyc/ekyc/verify', { method:'POST', body:fd });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'verify failed');
+        const res = $('result'); res.className = 'result show ' + (d.verified ? 'ok' : 'bad');
+        res.innerHTML =
+          `<div class="big">${d.verified ? '✅ Identity verified' : '❌ Not verified'}</div>
+           <div class="muted">${d.summary}</div>
+           <div class="row"><span>Liveness</span><b>${d.liveness.live ? 'pass' : 'fail'} (${d.liveness.score})</b></div>
+           <div class="row muted"><span>liveness detail</span><span>${d.liveness.reason}</span></div>
+           <div class="row"><span>Face match</span><b>${d.face_match.match ? 'match' : 'no match'}${d.face_match.cosine!=null?' (cos '+d.face_match.cosine+')':''}</b></div>
+           <div class="row muted"><span>threshold</span><span>${d.face_match.threshold}</span></div>
+           <p class="muted" style="margin-top:10px">${d.disclaimer}</p>`;
+      } catch(e){
+        const res = $('result'); res.className='result show bad'; res.innerHTML = 'Error: '+e.message;
+      } finally { $('verify').disabled=false; $('verify').textContent='Verify identity'; }
+    };
+  </script>
+</body>
+</html>

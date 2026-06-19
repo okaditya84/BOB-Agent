@@ -44,6 +44,13 @@ def test_no_face_is_handled_gracefully(matcher):
     assert res["cosine"] is None
 
 
+def test_liveness_rejects_blank_image(matcher):
+    blank = matcher.decode(_jpeg((128, 128, 128)))
+    res = matcher.liveness(blank)
+    assert res["live"] is False  # no face -> not live
+    assert "score" in res
+
+
 def test_api_face_match_no_face(matcher):
     from fastapi.testclient import TestClient
 
@@ -61,3 +68,33 @@ def test_api_face_match_no_face(matcher):
         body = r.json()
         assert body["match"] is False
         assert body["threshold"] > 0
+
+
+def test_api_ekyc_verify_blank_fails(matcher):
+    from fastapi.testclient import TestClient
+
+    from bobai_kyc.main import app
+
+    with TestClient(app) as c:
+        r = c.post(
+            "/v1/kyc/ekyc/verify",
+            files={
+                "selfie": ("s.jpg", _jpeg((120, 120, 120)), "image/jpeg"),
+                "document": ("d.jpg", _jpeg((30, 30, 30)), "image/jpeg"),
+            },
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["verified"] is False
+        assert "liveness" in body and "face_match" in body
+
+
+def test_ekyc_page_served(matcher):
+    from fastapi.testclient import TestClient
+
+    from bobai_kyc.main import app
+
+    with TestClient(app) as c:
+        r = c.get("/ekyc")
+        assert r.status_code == 200
+        assert "Live eKYC" in r.text
