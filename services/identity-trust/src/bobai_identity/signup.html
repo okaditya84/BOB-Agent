@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BOBAI — Create Account</title>
+  <style>
+    :root { --bob:#F15A22; --bob-dark:#C8431A; --ink:#1f2430; --muted:#6b7280; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:linear-gradient(135deg,#fff,#fde8df); color:var(--ink);
+           min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .card { background:#fff; width:440px; max-width:92vw; border-radius:16px; padding:30px;
+            box-shadow:0 12px 40px rgba(0,0,0,.12); }
+    .brand { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .brand .dot { width:34px; height:34px; border-radius:9px; background:var(--bob); color:#fff;
+                  font-weight:800; display:flex; align-items:center; justify-content:center; }
+    h1 { font-size:20px; margin:0; }
+    .sub { color:var(--muted); font-size:13px; margin:2px 0 20px; }
+    label { font-size:12px; color:var(--muted); font-weight:600; }
+    input { width:100%; padding:11px 12px; margin:6px 0 14px; border:1px solid #d7dae0;
+            border-radius:9px; font-size:14px; }
+    button { width:100%; padding:12px; border:0; border-radius:9px; background:var(--bob);
+             color:#fff; font-weight:700; font-size:15px; cursor:pointer; }
+    button:hover { background:var(--bob-dark); } button:disabled { opacity:.5; cursor:not-allowed; }
+    .meter { height:8px; border-radius:99px; background:#eee; overflow:hidden; margin:-6px 0 6px; }
+    .meter > div { height:100%; width:0; transition:width .3s,background .3s; }
+    .pw-label { font-size:12px; margin-bottom:12px; }
+    .hint { font-size:11px; color:var(--muted); }
+    .status { margin-top:16px; padding:14px; border-radius:10px; font-size:13px; display:none; }
+    .status.show { display:block; }
+    .ok { background:#e8f6ee; border:1px solid #b7e3c6; } .bad { background:#fdecec; border:1px solid #f5c2c2; }
+    .row { display:flex; justify-content:space-between; padding:3px 0; }
+    a { color:var(--bob-dark); font-weight:600; text-decoration:none; }
+    .foot { text-align:center; font-size:12px; margin-top:14px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><div class="dot">B</div><h1>Create your BOBAI account</h1></div>
+    <p class="sub">Secure onboarding. We assess sign-up risk and check password strength in real time.</p>
+
+    <label>Full name</label>
+    <input id="name" placeholder="Ravi Kumar" />
+    <label>Customer ID / Username</label>
+    <input id="user" placeholder="ravi.kumar" autocomplete="username" />
+    <label>Password</label>
+    <input id="pass" type="password" placeholder="Create a strong password" autocomplete="new-password" />
+    <div class="meter"><div id="meterFill"></div></div>
+    <div class="pw-label" id="pwLabel"><span class="hint">Type a password to see its strength.</span></div>
+    <label>Confirm password</label>
+    <input id="pass2" type="password" placeholder="Re-enter password" autocomplete="new-password" />
+    <p class="hint">📍 We request your location to protect your new account (consent-based).</p>
+    <button id="create" disabled>Create account securely</button>
+    <div class="status" id="status"></div>
+    <p class="foot">Already have an account? <a href="/login">Sign in</a></p>
+  </div>
+
+  <script>
+    const COLORS = ['#dc2626','#ea580c','#d97706','#16a34a','#15803d'];
+    const $ = id => document.getElementById(id);
+    let strengthOk = false;
+
+    let pwTimer;
+    $('pass').addEventListener('input', () => {
+      clearTimeout(pwTimer);
+      pwTimer = setTimeout(checkPassword, 250);  // debounce server check
+      updateButton();
+    });
+    $('pass2').addEventListener('input', updateButton);
+    $('user').addEventListener('input', updateButton);
+
+    async function checkPassword(){
+      const pw = $('pass').value;
+      if (!pw) { $('meterFill').style.width='0'; $('pwLabel').innerHTML='<span class="hint">Type a password to see its strength.</span>'; strengthOk=false; updateButton(); return; }
+      const r = await fetch('/v1/auth/password/check', { method:'POST',
+        headers:{'content-type':'application/json'}, body:JSON.stringify({password:pw}) });
+      const d = await r.json();
+      $('meterFill').style.width = ((d.score+1)/5*100)+'%';
+      $('meterFill').style.background = COLORS[d.score];
+      $('pwLabel').innerHTML = `<b style="color:${COLORS[d.score]}">${d.label}</b> · ~${d.entropy_bits} bits · `
+        + `<span class="hint">${d.feedback.join(' ')}</span>`;
+      strengthOk = d.acceptable; updateButton();
+    }
+    function updateButton(){
+      const match = $('pass').value && $('pass').value === $('pass2').value;
+      $('create').disabled = !(strengthOk && match && $('user').value.trim());
+    }
+
+    async function deviceFingerprint(){
+      const parts=[navigator.userAgent,navigator.language,screen.width+'x'+screen.height,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||0];
+      const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(parts.join('|')));
+      return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    function getGeo(){ return new Promise(res=>{ if(!navigator.geolocation) return res(null);
+      navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lon:p.coords.longitude,source:'client'}),()=>res(null),{timeout:6000}); }); }
+
+    $('create').onclick = async () => {
+      $('create').disabled=true; $('create').textContent='Assessing sign-up risk…';
+      const [fp,geo]=await Promise.all([deviceFingerprint(),getGeo()]);
+      const event={ user_id:$('user').value.trim(), event_type:'account_opening', timestamp:Date.now()/1000, device_fingerprint:fp };
+      if(geo) event.geo=geo;
+      try{
+        const r=await fetch('/v1/auth/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:$('pass').value,event})});
+        const d=await r.json();
+        const s=$('status');
+        if(d.created){
+          const risk=d.risk;
+          s.className='status show ok';
+          s.innerHTML=`<b>✅ ${d.message}</b>
+            <div class="row"><span>Sign-up risk</span><b>${Math.round(risk.risk_score*100)}% · ${risk.band} · ${risk.action}</b></div>
+            <div class="row"><span>Password</span><b>${d.password.label}</b></div>
+            ${d.recommend_passkey?'<div class="hint" style="margin-top:6px">Tip: enrol a passkey for phishing-resistant sign-in.</div>':''}
+            <p style="margin-top:10px"><a href="/login">→ Continue to sign in</a></p>`;
+        } else {
+          s.className='status show bad';
+          s.innerHTML=`<b>❌ ${d.message}</b>`+(d.risk?`<div class="hint">${(d.risk.reason_codes||[]).join('; ')}</div>`:'');
+        }
+      }catch(e){ const s=$('status'); s.className='status show bad'; s.textContent='Error: '+e.message; }
+      finally{ $('create').disabled=false; $('create').textContent='Create account securely'; }
+    };
+  </script>
+</body>
+</html>

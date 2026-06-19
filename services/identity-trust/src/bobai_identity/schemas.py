@@ -11,6 +11,7 @@ class EventType(str, Enum):
     """The kind of action being risk-assessed. Sensitivity rises down the list."""
 
     LOGIN = "login"
+    ACCOUNT_OPENING = "account_opening"  # new-customer signup
     TRANSACTION = "transaction"
     BENEFICIARY_ADD = "beneficiary_add"
     PROFILE_CHANGE = "profile_change"

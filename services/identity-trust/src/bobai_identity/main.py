@@ -60,6 +60,15 @@ def _webauthn() -> WebAuthnService:
 # --------------------------------------------------------------------------- #
 #  Requests                                                                    #
 # --------------------------------------------------------------------------- #
+class SignupRequest(BaseModel):
+    password: str
+    event: AuthEvent
+
+
+class PasswordCheckRequest(BaseModel):
+    password: str
+
+
 class WebAuthnBegin(BaseModel):
     user_id: str
 
@@ -159,6 +168,42 @@ def dashboard() -> str:
 @app.get("/login", response_class=HTMLResponse)
 def login_page() -> str:
     return (Path(__file__).parent / "login.html").read_text(encoding="utf-8")
+
+
+@app.get("/signup", response_class=HTMLResponse)
+def signup_page() -> str:
+    return (Path(__file__).parent / "signup.html").read_text(encoding="utf-8")
+
+
+@app.post("/v1/auth/password/check")
+def password_check(body: PasswordCheckRequest) -> dict[str, Any]:
+    from .auth import password
+
+    return password.evaluate(body.password)
+
+
+@app.post("/v1/auth/signup")
+def signup(body: SignupRequest) -> dict[str, Any]:
+    """New-customer signup: password-strength gate + signup-time risk assessment."""
+    from .auth import password
+
+    strength = password.evaluate(body.password)
+    if not strength["acceptable"]:
+        return {"created": False, "password": strength,
+                "message": "Password too weak — please strengthen it."}
+
+    # Force the event type to account_opening so the engine applies signup sensitivity.
+    body.event.event_type = body.event.event_type.ACCOUNT_OPENING
+    decision = _engine().evaluate(body.event)
+    created = decision.action != decision.action.DENY
+    return {
+        "created": created,
+        "password": strength,
+        "risk": decision.model_dump(mode="json"),
+        "recommend_passkey": decision.action.value in ("step_up", "monitor"),
+        "message": "Account created. We recommend enrolling a passkey for stronger protection."
+        if created else "Sign-up blocked: risk too high, please contact the branch.",
+    }
 
 
 @app.get("/v1/config")

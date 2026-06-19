@@ -92,3 +92,36 @@ def test_public_config(client):
     r = client.get("/v1/config")
     assert r.status_code == 200
     assert "bobai_ui_url" in r.json()
+
+
+def test_signup_page_served(client):
+    r = client.get("/signup")
+    assert r.status_code == 200
+    assert "Create" in r.text
+
+
+def test_password_check_endpoint(client):
+    r = client.post("/v1/auth/password/check", json={"password": "password"})
+    assert r.status_code == 200
+    assert r.json()["acceptable"] is False
+
+
+def test_signup_rejects_weak_password(client):
+    r = client.post("/v1/auth/signup", json={
+        "password": "123456",
+        "event": {"user_id": "newbie", "event_type": "account_opening",
+                  "timestamp": BASE_TS, "device_fingerprint": "d", "geo": MUMBAI},
+    })
+    body = r.json()
+    assert body["created"] is False
+
+
+def test_signup_succeeds_with_strong_password(client):
+    r = client.post("/v1/auth/signup", json={
+        "password": "Tr0ub4dour&3xplore",
+        "event": {"user_id": "newcustomer", "event_type": "account_opening",
+                  "timestamp": BASE_TS, "device_fingerprint": "d2", "geo": MUMBAI},
+    })
+    body = r.json()
+    assert body["created"] is True
+    assert "risk" in body

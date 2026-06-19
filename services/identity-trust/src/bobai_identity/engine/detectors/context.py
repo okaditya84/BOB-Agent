@@ -10,6 +10,7 @@ from . import DetectorResult
 # Inherent sensitivity of each action type (0..1 base risk).
 _SENSITIVITY = {
     EventType.LOGIN: 0.05,
+    EventType.ACCOUNT_OPENING: 0.30,  # new-account fraud is high-stakes
     EventType.TRANSACTION: 0.10,
     EventType.BENEFICIARY_ADD: 0.25,
     EventType.PROFILE_CHANGE: 0.20,
