@@ -29,3 +29,4 @@ test: ## Run all service test suites
 	cd services/identity-trust && uv run pytest -q
 	cd services/kyc && uv run pytest -q
 	cd services/assistant && uv run pytest -q
+	cd services/mcp && uv run pytest -q
