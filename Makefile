@@ -10,7 +10,9 @@ backend-up: ## Start backend services (identity-trust, kyc, assistant, mcp)
 	docker-compose up -d --build
 
 librechat-up: ## Start the branded LibreChat stack
-	cd platform/librechat && UID=$$(id -u) GID=$$(id -g) docker-compose up -d
+	# `env` is used because UID/GID are read-only shell variables on macOS;
+	# a plain `UID=... docker-compose` assignment errors under /bin/sh.
+	cd platform/librechat && env UID=$$(id -u) GID=$$(id -g) docker-compose up -d
 
 down: ## Stop everything
 	-cd platform/librechat && docker-compose down
