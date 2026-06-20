@@ -9,7 +9,11 @@ up: backend-up librechat-up ## Start the entire BOBAI stack
 backend-up: ## Start backend services (identity-trust, kyc, assistant, mcp)
 	docker-compose up -d --build
 
-librechat-up: ## Start the branded LibreChat stack
+librechat-build: ## Build the BOB-orange branded LibreChat image from source (slow, ~15 min)
+	cd platform/librechat && docker build --build-arg NODE_MAX_OLD_SPACE_SIZE=4096 -t bobai/librechat:branded .
+
+librechat-up: ## Start the branded LibreChat stack (builds the branded image if missing)
+	@docker image inspect bobai/librechat:branded >/dev/null 2>&1 || $(MAKE) librechat-build
 	# `env` is used because UID/GID are read-only shell variables on macOS;
 	# a plain `UID=... docker-compose` assignment errors under /bin/sh.
 	cd platform/librechat && env UID=$$(id -u) GID=$$(id -g) docker-compose up -d

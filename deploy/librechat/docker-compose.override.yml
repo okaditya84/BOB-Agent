@@ -1,6 +1,8 @@
-# BOBAI override — mount our librechat.yaml + BoB-branded assets into the prebuilt image.
+# BOBAI override — use the from-source branded image (BOB-orange theme) and mount
+# our librechat.yaml + BoB-branded assets.
 services:
   api:
+    image: bobai/librechat:branded
     volumes:
       - ./librechat.yaml:/app/librechat.yaml
       - ./client/public/assets/logo.svg:/app/client/dist/assets/logo.svg
