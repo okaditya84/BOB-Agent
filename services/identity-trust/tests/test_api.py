@@ -137,3 +137,55 @@ def test_signup_succeeds_with_strong_password(client):
     body = r.json()
     assert body["created"] is True
     assert "risk" in body
+
+
+def _signup(client, user="authuser", pw="Tr0ub4dour&3xplore"):
+    return client.post("/v1/auth/signup", json={
+        "password": pw,
+        "event": {"user_id": user, "event_type": "account_opening",
+                  "timestamp": BASE_TS, "device_fingerprint": "d", "geo": MUMBAI},
+    }).json()
+
+
+def test_signup_then_login_succeeds(client):
+    assert _signup(client)["created"] is True
+    r = client.post("/v1/auth/login", json={
+        "password": "Tr0ub4dour&3xplore",
+        "event": {"user_id": "authuser", "event_type": "login",
+                  "timestamp": BASE_TS + 100, "device_fingerprint": "d", "geo": MUMBAI},
+    }).json()
+    assert r["authenticated"] is True
+    assert "risk" in r
+
+
+def test_login_wrong_password_fails(client):
+    _signup(client)
+    r = client.post("/v1/auth/login", json={
+        "password": "WrongPassword!9",
+        "event": {"user_id": "authuser", "event_type": "login",
+                  "timestamp": BASE_TS + 100, "device_fingerprint": "d", "geo": MUMBAI},
+    }).json()
+    assert r["authenticated"] is False
+
+
+def test_login_unknown_user_fails(client):
+    r = client.post("/v1/auth/login", json={
+        "password": "whatever123!",
+        "event": {"user_id": "ghost", "event_type": "login",
+                  "timestamp": BASE_TS, "device_fingerprint": "d", "geo": MUMBAI},
+    }).json()
+    assert r["authenticated"] is False
+
+
+def test_signup_duplicate_rejected(client):
+    assert _signup(client)["created"] is True
+    assert _signup(client)["created"] is False  # same user again
+
+
+def test_password_never_stored_plaintext(client):
+    _signup(client, user="secretuser", pw="MyS3cret&Pass9")
+    # Pull the raw DB row; the stored hash must be Argon2id, not the plaintext.
+    h = client.app.state.store.get_password_hash("secretuser")
+    assert h is not None
+    assert h.startswith("$argon2id$")
+    assert "MyS3cret&Pass9" not in h

@@ -63,6 +63,7 @@ def _webauthn() -> WebAuthnService:
 class SignupRequest(BaseModel):
     password: str
     event: AuthEvent
+    name: str | None = None
 
 
 class PasswordCheckRequest(BaseModel):
@@ -184,8 +185,13 @@ def password_check(body: PasswordCheckRequest) -> dict[str, Any]:
 
 @app.post("/v1/auth/signup")
 def signup(body: SignupRequest) -> dict[str, Any]:
-    """New-customer signup: password-strength gate + signup-time risk assessment."""
-    from .auth import password
+    """New-customer signup: password-strength gate + risk + persist (Argon2id hash)."""
+    from .auth import hashing, password
+
+    store = app.state.store
+    user_id = body.event.user_id
+    if store.user_exists(user_id):
+        return {"created": False, "message": "An account with this Customer ID already exists."}
 
     strength = password.evaluate(body.password)
     if not strength["acceptable"]:
@@ -195,14 +201,52 @@ def signup(body: SignupRequest) -> dict[str, Any]:
     # Force the event type to account_opening so the engine applies signup sensitivity.
     body.event.event_type = body.event.event_type.ACCOUNT_OPENING
     decision = _engine().evaluate(body.event)
-    created = decision.action != decision.action.DENY
+    if decision.action.value == "deny":
+        return {"created": False, "password": strength,
+                "risk": decision.model_dump(mode="json"),
+                "message": "Sign-up blocked: risk too high, please contact the branch."}
+
+    # Persist the user with an Argon2id password hash (never plaintext).
+    store.create_user(user_id, body.name, hashing.hash_password(body.password), body.event.timestamp)
+    store.append_audit("account_created", user_id, {"user_id": user_id}, body.event.timestamp)
     return {
-        "created": created,
+        "created": True,
         "password": strength,
         "risk": decision.model_dump(mode="json"),
         "recommend_passkey": decision.action.value in ("step_up", "monitor"),
-        "message": "Account created. We recommend enrolling a passkey for stronger protection."
-        if created else "Sign-up blocked: risk too high, please contact the branch.",
+        "message": "Account created. We recommend enrolling a passkey for stronger protection.",
+    }
+
+
+@app.post("/v1/auth/login")
+def login(body: SignupRequest) -> dict[str, Any]:
+    """Authenticate: verify the Argon2id password hash, THEN assess login risk."""
+    from .auth import hashing
+
+    store = app.state.store
+    user_id = body.event.user_id
+    stored = store.get_password_hash(user_id)
+
+    # Constant-time-ish: always do a verify to avoid leaking which users exist.
+    if stored is None:
+        hashing.verify_password(
+            "$argon2id$v=19$m=65536,t=3,p=2$c29tZXNhbHRzb21lc2FsdA$"
+            "0000000000000000000000000000000000000000000", body.password)
+        store.append_audit("login_failed", user_id, {"reason": "no_such_user"}, body.event.timestamp)
+        return {"authenticated": False, "message": "Invalid Customer ID or password."}
+
+    if not hashing.verify_password(stored, body.password):
+        store.append_audit("login_failed", user_id, {"reason": "bad_password"}, body.event.timestamp)
+        return {"authenticated": False, "message": "Invalid Customer ID or password."}
+
+    if hashing.needs_rehash(stored):
+        store.update_password_hash(user_id, hashing.hash_password(body.password))
+
+    decision = _engine().evaluate(body.event)  # password OK -> now risk-assess the context
+    return {
+        "authenticated": True,
+        "risk": decision.model_dump(mode="json"),
+        "message": "Authenticated.",
     }
 
 

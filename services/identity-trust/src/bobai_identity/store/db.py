@@ -30,6 +30,12 @@ class UserProfile:
 
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,
+    name TEXT,
+    password_hash TEXT NOT NULL,
+    created_ts REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS user_profiles (
     user_id TEXT PRIMARY KEY,
     last_ts REAL,
@@ -112,6 +118,36 @@ class Store:
         if value is None:
             return None
         return hmac.new(self._secret, value.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    # ---- user accounts (passwords stored only as Argon2id hashes) ----
+    def user_exists(self, user_id: str) -> bool:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM users WHERE user_id = ?", (user_id,)
+            ).fetchone()
+        return row is not None
+
+    def create_user(self, user_id: str, name: str | None, password_hash: str, ts: float) -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO users (user_id, name, password_hash, created_ts) VALUES (?, ?, ?, ?)",
+                (user_id, name, password_hash, ts),
+            )
+            self._conn.commit()
+
+    def get_password_hash(self, user_id: str) -> str | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT password_hash FROM users WHERE user_id = ?", (user_id,)
+            ).fetchone()
+        return row["password_hash"] if row else None
+
+    def update_password_hash(self, user_id: str, password_hash: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "UPDATE users SET password_hash = ? WHERE user_id = ?", (password_hash, user_id)
+            )
+            self._conn.commit()
 
     # ---- user profiles ----
     def get_profile(self, user_id: str) -> UserProfile:

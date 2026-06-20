@@ -93,14 +93,16 @@
     }
     const grantHtml = `<a class="go" href="${'__UI__'}">→ Continue to BOBAI</a>`;
 
-    async function evaluate(userId){
+    async function authenticate(userId, pass){
       const [fp, geo] = await Promise.all([deviceFingerprint(), getGeo()]);
       const event = { user_id:userId, event_type:'login', timestamp: Date.now()/1000,
                       device_fingerprint:fp };
       if (geo) event.geo = geo;
-      const r = await fetch('/v1/risk/evaluate', { method:'POST',
-        headers:{'content-type':'application/json'}, body: JSON.stringify(event) });
-      return { decision: await r.json(), event };
+      // Verify the Argon2id-hashed password, then risk-assess the context.
+      const r = await fetch('/v1/auth/login', { method:'POST',
+        headers:{'content-type':'application/json'}, body: JSON.stringify({ password:pass, event }) });
+      const d = await r.json();
+      return { authenticated: d.authenticated, decision: d.risk, message: d.message, event };
     }
 
     async function stepUp(userId, event){
@@ -126,10 +128,15 @@
 
     document.getElementById('signin').addEventListener('click', async () => {
       const userId = document.getElementById('user').value.trim();
-      if (!userId) { show('s-deny','Please enter your Customer ID.'); return; }
-      const btn = document.getElementById('signin'); btn.disabled = true; btn.textContent = 'Assessing risk…';
+      const pass = document.getElementById('pass').value;
+      if (!userId || !pass) { show('s-deny','Please enter your Customer ID and password.'); return; }
+      const btn = document.getElementById('signin'); btn.disabled = true; btn.textContent = 'Verifying…';
       try {
-        const { decision, event } = await evaluate(userId);
+        const { authenticated, decision, message, event } = await authenticate(userId, pass);
+        if (!authenticated) {
+          show('s-deny', `<b>❌ ${message}</b><p class="chip">New customer? <a href="/signup">Create an account</a>.</p>`);
+          return;
+        }
         if (decision.action === 'allow' || decision.action === 'monitor') {
           show('s-allow', decisionHtml(decision, grantHtml.replace('__UI__', UI_URL)));
         } else if (decision.action === 'step_up') {

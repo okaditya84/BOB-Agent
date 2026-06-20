@@ -101,7 +101,7 @@
       const event={ user_id:$('user').value.trim(), event_type:'account_opening', timestamp:Date.now()/1000, device_fingerprint:fp };
       if(geo) event.geo=geo;
       try{
-        const r=await fetch('/v1/auth/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:$('pass').value,event})});
+        const r=await fetch('/v1/auth/signup',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:$('pass').value,event,name:$('name').value.trim()||null})});
         const d=await r.json();
         const s=$('status');
         if(d.created){
